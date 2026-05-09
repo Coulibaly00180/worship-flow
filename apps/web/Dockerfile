@@ -47,6 +47,7 @@ ENV NODE_ENV=production \
     HOSTNAME="0.0.0.0"
 
 RUN apk add --no-cache openssl && \
+    npm install -g prisma@6.19.2 && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
