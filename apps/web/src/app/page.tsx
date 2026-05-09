@@ -3,6 +3,10 @@ import { auth } from "@/lib/auth"
 
 export default async function HomePage() {
   const session = await auth()
-  if (session) redirect("/app/songs")
+
+  if (session?.user?.id && session.user.role) {
+    redirect("/app/songs")
+  }
+
   redirect("/login")
 }

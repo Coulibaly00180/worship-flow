@@ -98,7 +98,7 @@
   --btn-height-md:  32px;
   --btn-height-lg:  40px;
   --btn-height-xl:  48px;
-  --header-height:  56px;
+  --header-height:  72px;
 }
 
 /* ─── Mode Préparation — thème clair (défaut) ───────────────────────────────
@@ -206,6 +206,9 @@
    ─────────────────────────────────────────────────────────────────────────── */
 /* ─── Plan item kind border colors (via data-kind attribute) ─────────────── */
 @layer utilities {
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
   [data-kind="SONG_BLOCK"]         { border-left-color: var(--kind-song); }
   [data-kind="BIBLE_VERSE"]        { border-left-color: var(--kind-bible); }
   [data-kind="BIBLE_PASSAGE"]      { border-left-color: var(--kind-bible); }

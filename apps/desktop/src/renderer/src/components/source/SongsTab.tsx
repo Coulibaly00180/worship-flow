@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDownAZ, CalendarArrowDown, Clock, ExternalLink, Heart, Loader2, Music2, Plus, Search, TrendingUp, Upload, X } from "lucide-react";
+import { ArrowDownAZ, CalendarArrowDown, ChevronDown, Clock, ExternalLink, Heart, ListFilter, Loader2, Music2, Plus, Search, TrendingUp, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const FAVORITES_KEY = "cp_favorite_songs";
@@ -128,25 +134,31 @@ export function SongsTab({ onCreateSong, onSelectSong, selectedSongId }: SongsTa
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1" role="group" aria-label="Trier par">
-          {SORT_OPTIONS.map((opt) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button
-              key={opt.value}
               type="button"
-              className={cn(
-                "flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors",
-                sortBy === opt.value
-                  ? "bg-primary text-primary-fg"
-                  : "text-text-muted hover:text-text-secondary hover:bg-bg-elevated"
-              )}
-              onClick={() => handleSortChange(opt.value)}
-              aria-current={sortBy === opt.value ? "true" : undefined}
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-bg-elevated hover:text-text-secondary transition-colors"
+              aria-label="Changer le tri"
             >
-              {opt.icon}
-              {opt.label}
+              <ListFilter className="h-3 w-3" />
+              <span>Trier : <span className="text-text-primary">{SORT_OPTIONS.find((o) => o.value === sortBy)?.label}</span></span>
+              <ChevronDown className="h-3 w-3 opacity-60" />
             </button>
-          ))}
-        </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-36">
+            {SORT_OPTIONS.map((opt) => (
+              <DropdownMenuItem
+                key={opt.value}
+                className={cn(sortBy === opt.value && "font-semibold text-primary")}
+                onClick={() => handleSortChange(opt.value)}
+              >
+                {opt.icon}
+                {opt.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* List */}
