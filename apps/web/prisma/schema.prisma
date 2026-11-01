@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ── Modèles métier (partagés avec le desktop via PostgreSQL) ─────────────────
+// ── Modèles métier ─────────────────
 
 model Song {
   id        String    @id @default(cuid())
@@ -16,7 +16,7 @@ model Song {
   album     String?
   year      String?
   language  String?
-  tags      String?   // JSON-as-TEXT (compatibilité desktop)
+  tags      String?   // JSON-as-TEXT
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -25,6 +25,7 @@ model Song {
   planItems ServiceItem[]  @relation("ServiceItemSong")
   favorites Favorite[]
   learnings SongLearning[]
+  scores    SongScore[]
 }
 
 model SongBlock {
@@ -78,6 +79,23 @@ model ServiceItem {
 
   @@unique([planId, order])
   @@index([planId, order])
+  @@index([songId])
+}
+
+// ── Partitions (PDF / images) attachées à un chant ──────────────────────────
+
+model SongScore {
+  id           String   @id @default(cuid())
+  songId       String
+  filename     String
+  mimeType     String
+  size         Int
+  data         Bytes
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
   @@index([songId])
 }
 

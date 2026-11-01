@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { LearningBadge } from "@/components/songs/LearningBadge"
 import { FavoriteToggle } from "@/components/songs/FavoriteToggle"
 import { LearningSelect } from "@/components/songs/LearningSelect"
+import { ScoresSection } from "@/components/songs/ScoresSection"
 import { canEditSongs } from "@/lib/roles"
 
 type Props = { params: Promise<{ id: string }> }
@@ -32,6 +33,7 @@ export default async function SongDetailPage({ params }: Props) {
       blocks: { orderBy: { order: "asc" } },
       favorites: { where: { userId: session.user.id }, select: { userId: true } },
       learnings: { where: { userId: session.user.id }, select: { status: true } },
+      scores: { orderBy: { createdAt: "asc" }, select: { id: true, filename: true, mimeType: true, size: true } },
     },
   })
 
@@ -113,6 +115,8 @@ export default async function SongDetailPage({ params }: Props) {
           <LearningSelect songId={song.id} initial={learningStatus} />
         </div>
       </div>
+
+      <ScoresSection songId={song.id} initial={song.scores} canEdit={canEditSongs(session.user.role)} />
 
       {/* Blocks */}
       <div className="flex flex-col gap-6">
