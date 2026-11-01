@@ -45,6 +45,33 @@ voix:
 | Voix | liste (`- nom:`) ou dictionnaire (`Soprano:`) ; Soprano/Alto → clé de sol, Ténor → sol 8vb, Basse → clé de fa ; surcharge `cle:` |
 | Paroles | syllabes coupées par `-` ; plusieurs couplets = une liste ; alignées ligne à ligne si autant de lignes que les notes |
 
+### Octaves, accords, nuances et reprises
+| Élément | Écriture | Exemple |
+|---------|----------|---------|
+| Octave d'une voix | `octave: N` (-3 à 3) sous la voix, ou à la racine pour toutes | `octave: -1` : mêmes notes que le ténor, une octave plus bas |
+| Accords | `@Nom` devant la note ; français ou anglais, `/` pour la basse, `min` = `m` | `@Sol` `@Rém7` `@Sib/Fa` `@La7` |
+| Nuances | `!p !pp !ppp !mp !mf !f !ff !fff !sfz` | `!mf sol la` |
+| Crescendo / decrescendo | `!cresc(` … `!cresc)` ; `!dim(` … `!dim)` | |
+| Ornements | `!fermata !accent !staccato !trille` | `!fermata sol4` |
+| Reprises | `\|:` `:\|`, fins différentes `\|1` et `:\|2` ; signes `!segno !coda !dc !ds !fine !dacapo !dacoda` | `\|1 mi :\|2 fa \|]` |
+| Texte au-dessus de la portée | `^Mot_ou_phrase` (`_` = espace) | `^Refrain_x2` |
+
+Les nuances, accords et textes s'appliquent à la **note ou au silence suivant** (sur la même ligne) ; ils s'écrivent dans un bloc `notes: |`
+car un `!` ou un `@` en début de valeur a un sens particulier en YAML. Un exemple complet (4 voix, accords, nuances, volta) est disponible
+dans l'éditeur (« Charger un exemple complet »).
+
+**Accords** : saisis en français, stockés en anglais dans l'ABC (`"G7"`), car abcjs ne transpose que les noms anglais ; l'affichage les remet en français
+(`Sol7`) après chaque rendu. Ils suivent donc la transposition (Sol → La à +2).
+
+**Tessiture** : `do` est le do central (convention d'écriture, pas de transposition automatique entre voix). Pour éviter les erreurs d'octave,
+chaque voix reconnue (Soprano, Alto, Ténor, Basse) est contrôlée sur une tessiture usuelle avec marge (soprano 57-84, alto 52-79, ténor 57-83 écrit en clé de sol 8vb,
+basse 36-67, hauteurs MIDI ; toute autre voix : 28-91). Une note hors tessiture donne un **avertissement non bloquant** qui propose le bon décalage
+(« Voix « Basse » : « do'' » (et 2 autres) semble trop aigu pour une voix de basse… `octave: -1` sous la voix décale toutes ses notes »).
+
+**Mise en page** : les portées sont recoupées à la largeur disponible et recalculées si elle change (rotation du téléphone, redimensionnement).
+Sur téléphone la mise en page est calculée sur une largeur logique de 460 px (~2 mesures par ligne) puis réduite à l'écran ; sur grand écran elle suit
+la largeur du conteneur (jusqu'à 6 mesures par ligne). Vérifié avec 4 voix × 24 mesures, paroles et accords, sans défilement horizontal.
+
 Erreurs : chaque problème est signalé en français avec la voix et le jeton fautif (« Voix « Alto » : « fax » n'est pas une note valide… »),
 ou la ligne pour une erreur de syntaxe YAML ; l'enregistrement est bloqué tant qu'il en reste. Les clés inconnues donnent un avertissement
 (faute de frappe probable). Sécurité : titre/compositeur/paroles ne peuvent pas injecter de champs ABC (retours à la ligne neutralisés),
@@ -70,7 +97,7 @@ w: la la la la la
 Plusieurs voix : une ligne `V:1` / `V:2` par voix. Les paroles se saisissent sous la portée avec `w:`.
 La transposition (−12 à +12 demi-tons) est visuelle : elle ne modifie pas le texte enregistré.
 
-Limites : pas de lecture audio (il faudrait héberger une banque de sons, ~1-2 Mo, et ouvrir la CSP) ; pas de saisie à la souris.
+Limites : pas d'accords de guitare en tablature, pas de lecture audio (il faudrait héberger une banque de sons, ~1-2 Mo, et ouvrir la CSP) ; pas de saisie à la souris.
 
 ## Recherche
 `GET /api/songs?q=…` et la page Bibliothèque cherchent dans le titre, l'artiste, les étiquettes et les **paroles**, sans tenir compte des

@@ -1,4 +1,5 @@
 import { parseDocument } from "yaml"
+import { chordToEnglish } from "@/lib/chords"
 
 /**
  * Format de partition « YAML en solfège » : plus simple à saisir que l'ABC, compilé en ABC pour
@@ -32,9 +33,30 @@ voix:
       tu me re- lè- ves
 `
 
+/** Exemple complet : 4 voix, accords, nuances, volta, signes de reprise, texte, décalage d'octave. */
+export const YAML_EXAMPLE_FULL = `titre: Exemple complet
+compositeur: Équipe louange
+tonalite: Sol
+mesure: 4/4
+tempo: 84
+voix:
+  - nom: Soprano
+    notes: |
+      !mp @Sol sol la si do' | !cresc( @Do ré'2 mi'2 | !cresc) !f @Ré7 ré'4 | @Sol sol4 |1 z4 :|2 !fermata sol4 |]
+    paroles: |
+      Gra- ce in- fi- nie
+  - nom: Alto
+    notes: sol, la, si, do | ré2 mi2 | ré4 | sol,4 |1 z4 :|2 sol,4 |]
+  - nom: Ténor
+    notes: sol la si do' | ré'2 mi'2 | ré'4 | sol4 |1 z4 :|2 sol4 |]
+  - nom: Basse
+    octave: -1          # mêmes notes que le ténor, une octave plus bas
+    notes: sol la si do' | ré'2 mi'2 | ré'4 | sol4 |1 z4 :|2 sol4 |]
+`
+
 const SOLFEGE: Record<string, string> = { do: "C", re: "D", mi: "E", fa: "F", sol: "G", la: "A", si: "B" }
-const KNOWN_ROOT = new Set(["titre", "compositeur", "tonalite", "mesure", "tempo", "unite", "voix", "notes", "paroles", "nom", "cle"])
-const KNOWN_VOICE = new Set(["nom", "notes", "paroles", "cle"])
+const KNOWN_ROOT = new Set(["titre", "compositeur", "tonalite", "mesure", "tempo", "unite", "voix", "notes", "paroles", "nom", "cle", "octave"])
+const KNOWN_VOICE = new Set(["nom", "notes", "paroles", "cle", "octave"])
 
 /** Clé de lecture proposée selon le nom de la voix (modifiable avec `cle:`). */
 const CLEFS: [RegExp, string][] = [
@@ -45,10 +67,33 @@ const CLEFS: [RegExp, string][] = [
 ]
 const VALID_CLEFS = ["treble", "treble-8", "treble+8", "bass", "alto", "tenor", "perc", "none"]
 
+/** Tessitures usuelles (hauteurs MIDI écrites, marge comprise) : au-delà, on avertit sans bloquer. */
+type Range = { re: RegExp; label: string; min: number; max: number }
+const RANGES: Range[] = [
+  { re: /soprano|dessus/i, label: "soprano", min: 57, max: 84 },
+  { re: /alto|contralto/i, label: "alto", min: 52, max: 79 },
+  { re: /t[ée]nor/i, label: "ténor", min: 57, max: 83 },
+  { re: /basse|bass/i, label: "basse", min: 36, max: 67 },
+]
+const HUMAN_RANGE = { min: 28, max: 91 }
+const SEMITONE: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
+const ACC_VALUE: Record<string, number> = { "#": 1, "♯": 1, "##": 2, b: -1, "♭": -1, bb: -2, "=": 0, "": 0 }
+
+/** Nuances, ornements et signes de reprise : « !mf », « !cresc( », « !segno »… */
+const DECORATIONS: Record<string, string> = {
+  ppp: "ppp", pp: "pp", p: "p", mp: "mp", mf: "mf", f: "f", ff: "ff", fff: "fff", sfz: "sfz",
+  "cresc(": "crescendo(", "cresc)": "crescendo)", "dim(": "diminuendo(", "dim)": "diminuendo)",
+  fermata: "fermata", accent: "accent", staccato: "staccato", trille: "trill",
+  segno: "segno", coda: "coda", dc: "D.C.", ds: "D.S.", fine: "fine", dacoda: "dacoda", dacapo: "dacapo",
+}
+
 const NOTE_RE = /^([A-Za-zÀ-ÿ]+?)(##|bb|[#b♯♭=]?)(['’,]*)(\d*\/?\d*)(-?)$/
 const REST_RE = /^z(\d*\/?\d*)$/
 const BAR_RE = /^[|:[\]]+\d?$/
 const DURATION_RE = /^(\d+)?(\/\d*)?$/
+const DECORATION_RE = /^!([a-zA-Z]+[()]?)$/
+const ANNOTATION_RE = /^\^([\p{L}\p{N}_.,'’()!?-]{1,40})$/u
+const CHORD_RE = /^@(.{1,24})$/
 
 /** « Voix « Alto » » ; « Partition » quand la voix n'a pas de nom (partition à une voix). */
 const who = (nom: string) => (nom === "Voix" ? "Partition" : `Voix « ${nom} »`)
@@ -56,7 +101,9 @@ const who = (nom: string) => (nom === "Voix" ? "Partition" : `Voix « ${nom} »`
 const strip = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "")
 const oneLine = (s: string) => s.replace(/[\r\n]+/g, " ").replace(/%/g, "％").trim().slice(0, 150)
 
-function accidental(a: string): string {
+type ParsedNote = { letter: string; acc: string; octave: number; duration: string; tie: string }
+
+function accidentalAbc(a: string): string {
   switch (a) {
     case "#": case "♯": return "^"
     case "##": return "^^"
@@ -67,26 +114,41 @@ function accidental(a: string): string {
   }
 }
 
-/** Convertit une note « sol#' », « ré2 », « la/2 » ou « C,2 » en ABC ; null si ce n'est pas une note. */
-export function noteToAbc(token: string): string | null {
+/** Analyse « sol#' », « ré2 », « la/2 » ou « C,2 ». `octave` : 0 = octave du do central ; `shift` décale la voix. */
+function parseNote(token: string, shift = 0): ParsedNote | null {
   const m = NOTE_RE.exec(token)
   if (!m) return null
   const [, rawName, acc, marks, duration, tie] = m
   const solfege = SOLFEGE[strip(rawName).toLowerCase()]
   let letter: string
-  let octave = 0
+  let octave = shift
   if (solfege) {
     letter = solfege
   } else if (/^[A-Ga-g]$/.test(rawName)) {
     letter = rawName.toUpperCase()
-    octave = rawName === rawName.toLowerCase() ? 1 : 0 // convention ABC : minuscule = octave au-dessus
+    if (rawName === rawName.toLowerCase()) octave += 1 // convention ABC : minuscule = octave au-dessus
   } else {
     return null
   }
   for (const c of marks) octave += c === "," ? -1 : 1
   if (!DURATION_RE.test(duration)) return null
-  const pitch = octave <= 0 ? letter + ",".repeat(-octave) : letter.toLowerCase() + "'".repeat(octave - 1)
-  return `${accidental(acc)}${pitch}${duration}${tie}`
+  return { letter, acc, octave, duration, tie }
+}
+
+function renderNote(n: ParsedNote): string {
+  const pitch = n.octave <= 0 ? n.letter + ",".repeat(-n.octave) : n.letter.toLowerCase() + "'".repeat(n.octave - 1)
+  return `${accidentalAbc(n.acc)}${pitch}${n.duration}${n.tie}`
+}
+
+/** Convertit une note en ABC ; null si ce n'est pas une note. */
+export function noteToAbc(token: string, shift = 0): string | null {
+  const n = parseNote(token, shift)
+  return n ? renderNote(n) : null
+}
+
+/** Hauteur MIDI (do central = 60) d'une note analysée. */
+function midiOf(n: ParsedNote): number {
+  return 60 + SEMITONE[n.letter] + (ACC_VALUE[n.acc] ?? 0) + 12 * n.octave
 }
 
 /** Découpe une ligne de notes en éléments : notes, silences, barres (même collées : « sol|la »). */
@@ -111,19 +173,48 @@ function tokenize(line: string): string[] {
   return out
 }
 
-function convertLine(line: string, voiceName: string, errors: string[]): string {
+type LineCtx = { voice: string; shift: number; errors: string[]; range: Range | null; outOfRange: { token: string; high: boolean }[] }
+
+function convertLine(line: string, ctx: LineCtx): string {
   const result: string[] = []
+  let prefix = "" // accords, nuances et textes : s'appliquent à la prochaine note ou au prochain silence
+  let lastPrefixToken = ""
+
   for (const tok of tokenize(line)) {
     if (BAR_RE.test(tok)) { result.push(tok); continue }
-    const rest = REST_RE.exec(tok)
-    if (rest) { result.push(tok); continue }
-    const note = noteToAbc(tok)
-    if (note === null) {
-      errors.push(`${who(voiceName)} : « ${tok} » n'est pas une note valide (exemples : do, ré2, sol#', la/2, si-, z, |).`)
+
+    const chord = CHORD_RE.exec(tok)
+    if (chord) {
+      const en = chordToEnglish(chord[1])
+      if (!en) ctx.errors.push(`${who(ctx.voice)} : « ${tok} » n'est pas un accord (exemples : @Sol, @Rém7, @Sib/Fa, @La7).`)
+      else { prefix += `"${en}"`; lastPrefixToken = tok }
       continue
     }
-    result.push(note)
+    const deco = DECORATION_RE.exec(tok)
+    if (deco) {
+      const abc = DECORATIONS[deco[1].toLowerCase()]
+      if (!abc) ctx.errors.push(`${who(ctx.voice)} : « ${tok} » est inconnu (disponibles : ${Object.keys(DECORATIONS).map((k) => "!" + k).join(", ")}).`)
+      else { prefix += `!${abc}!`; lastPrefixToken = tok }
+      continue
+    }
+    const ann = ANNOTATION_RE.exec(tok)
+    if (ann) { prefix += `"^${ann[1].replace(/_/g, " ").replace(/"/g, "'")}"`; lastPrefixToken = tok; continue } // "^texte" = texte au-dessus de la portée
+
+    if (REST_RE.test(tok)) { result.push(prefix + tok); prefix = ""; continue }
+
+    const note = parseNote(tok, ctx.shift)
+    if (!note) {
+      ctx.errors.push(`${who(ctx.voice)} : « ${tok} » n'est pas une note valide (exemples : do, ré2, sol#', la/2, si-, z, |).`)
+      continue
+    }
+    const midi = midiOf(note)
+    const limits = ctx.range ?? HUMAN_RANGE
+    if (midi < limits.min || midi > limits.max) ctx.outOfRange.push({ token: tok, high: midi > limits.max })
+    result.push(prefix + renderNote(note))
+    prefix = ""
   }
+
+  if (prefix) ctx.errors.push(`${who(ctx.voice)} : « ${lastPrefixToken} » doit être suivi d'une note ou d'un silence sur la même ligne.`)
   return result.join(" ")
 }
 
@@ -147,12 +238,19 @@ function asText(v: unknown): string | undefined {
   return undefined
 }
 
-type VoiceDef = { nom: string; notes: string; paroles: string[] ; cle?: string }
+type VoiceDef = { nom: string; notes: string; paroles: string[]; cle?: string; octave: number }
 
 function lyricsList(v: unknown): string[] {
   if (v === undefined || v === null) return []
   const items = Array.isArray(v) ? v : [v]
   return items.map((x) => asText(x) ?? "").filter((x) => x.trim().length > 0)
+}
+
+/** Décalage d'octave (-3 à 3) ; undefined si absent, null si invalide. */
+function parseOctave(v: unknown): number | undefined | null {
+  if (v === undefined || v === null) return undefined
+  const n = Number(asText(v))
+  return Number.isInteger(n) && n >= -3 && n <= 3 ? n : null
 }
 
 /** Compile une partition YAML en ABC. Ne lève jamais d'exception : renvoie la liste des erreurs lisibles. */
@@ -184,7 +282,7 @@ export function compileYamlScore(source: string): CompileResult {
   }
   const r = root as Record<string, unknown>
   for (const k of Object.keys(r)) {
-    if (!KNOWN_ROOT.has(k)) warnings.push(`Clé inconnue « ${k} » ignorée (clés connues : titre, compositeur, tonalite, mesure, tempo, unite, voix).`)
+    if (!KNOWN_ROOT.has(k)) warnings.push(`Clé inconnue « ${k} » ignorée (clés connues : titre, compositeur, tonalite, mesure, tempo, unite, octave, voix).`)
   }
 
   // --- en-tête
@@ -211,6 +309,9 @@ export function compileYamlScore(source: string): CompileResult {
     else tempo = t
   }
 
+  const globalOctave = parseOctave(r.octave)
+  if (globalOctave === null) errors.push("« octave » doit être un entier entre -3 et 3 (par exemple -1 pour descendre d'une octave).")
+
   // --- voix
   const voices: VoiceDef[] = []
   const rawVoices = r.voix
@@ -218,7 +319,9 @@ export function compileYamlScore(source: string): CompileResult {
     for (const k of Object.keys(v)) if (!KNOWN_VOICE.has(k)) warnings.push(`${who(nom)} : clé inconnue « ${k} » ignorée.`)
     const notes = asText(v.notes)
     if (!notes || !notes.trim()) { errors.push(`${who(nom)} : « notes » est vide ou manquant.`); return }
-    voices.push({ nom, notes, paroles: lyricsList(v.paroles), cle: asText(v.cle)?.trim() })
+    const oct = parseOctave(v.octave)
+    if (oct === null) { errors.push(`${who(nom)} : « octave » doit être un entier entre -3 et 3.`); return }
+    voices.push({ nom, notes, paroles: lyricsList(v.paroles), cle: asText(v.cle)?.trim(), octave: oct ?? globalOctave ?? 0 })
   }
 
   if (Array.isArray(rawVoices)) {
@@ -245,8 +348,15 @@ export function compileYamlScore(source: string): CompileResult {
   // --- corps
   const bodies: string[] = []
   for (const v of voices) {
+    const ctx: LineCtx = {
+      voice: v.nom,
+      shift: v.octave,
+      errors,
+      range: RANGES.find((x) => x.re.test(v.nom)) ?? null,
+      outOfRange: [],
+    }
     const noteLines = v.notes.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
-    const converted = noteLines.map((l) => convertLine(l, v.nom, errors))
+    const converted = noteLines.map((l) => convertLine(l, ctx))
     const verses = v.paroles.map((p) => p.split(/\r?\n/).map((l) => l.trim()).filter(Boolean))
 
     // Paroles alignées ligne à ligne si chaque couplet a autant de lignes que les notes ; sinon tout sur une ligne
@@ -263,6 +373,16 @@ export function compileYamlScore(source: string): CompileResult {
     }
 
     if (v.cle && !VALID_CLEFS.includes(v.cle)) errors.push(`${who(v.nom)} : clé « ${v.cle} » inconnue (${VALID_CLEFS.join(", ")}).`)
+
+    if (ctx.outOfRange.length > 0) {
+      const first = ctx.outOfRange[0]
+      const n = ctx.outOfRange.length
+      const where = ctx.range ? `pour une voix de ${ctx.range.label}` : "pour une voix humaine"
+      warnings.push(
+        `${who(v.nom)} : « ${first.token} »${n > 1 ? ` (et ${n - 1} autre${n > 2 ? "s" : ""})` : ""} semble trop ${first.high ? "aigu" : "grave"} ${where}. ` +
+          `Vérifiez l'octave ; « octave: ${first.high ? "-1" : "1"} » sous la voix décale toutes ses notes.`,
+      )
+    }
     bodies.push(lines.join("\n"))
   }
 

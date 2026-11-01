@@ -7,7 +7,7 @@ import { FileText, Image as ImageIcon, Music, Trash2, Upload, ExternalLink, Penc
 import { AbcScore } from "@/components/songs/AbcScore"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { ABC_TEMPLATE, VOICES, VOICE_LABEL, type Voice } from "@/lib/scoreFile"
-import { YAML_TEMPLATE, compileYamlScore } from "@/lib/scoreYaml"
+import { YAML_EXAMPLE_FULL, YAML_TEMPLATE, compileYamlScore } from "@/lib/scoreYaml"
 
 export type ScoreMeta = {
   id: string
@@ -271,9 +271,22 @@ export function ScoresSection({
                   <li><b>Durées</b> : <code>sol2</code> = 2 temps, <code>sol/2</code> = demi-temps, <code>sol3/2</code> = 1,5 temps, <code>sol2-</code> = liée à la suivante. <code>z</code> = silence.</li>
                   <li><b>Barres</b> : <code>|</code> mesure, <code>||</code> double barre, <code>|]</code> fin, <code>|:</code> et <code>:|</code> reprises.</li>
                   <li><b>Plusieurs voix</b> : une entrée par voix sous <code>voix:</code> (Soprano, Alto, Ténor, Basse : la clé de lecture est choisie pour vous).</li>
+                  <li><b>Octave d&apos;une voix</b> : <code>octave: -1</code> sous la voix décale toutes ses notes d&apos;une octave (de -3 à 3). Un message vous prévient si une note sort de la tessiture de la voix.</li>
+                  <li><b>Accords</b> : <code>@Sol</code>, <code>@Rém7</code>, <code>@Sib/Fa</code> devant la note concernée. Ils suivent la transposition.</li>
+                  <li><b>Nuances</b> : <code>!p</code> <code>!mp</code> <code>!mf</code> <code>!f</code> <code>!ff</code>, crescendo <code>!cresc(</code> … <code>!cresc)</code>, decrescendo <code>!dim(</code> … <code>!dim)</code>, <code>!fermata</code>, <code>!accent</code>, <code>!staccato</code>.</li>
+                  <li><b>Reprises</b> : <code>|:</code> <code>:|</code>, fins différentes <code>|1</code> et <code>:|2</code>, signes <code>!segno</code> <code>!coda</code> <code>!dc</code> (D.C.) <code>!ds</code> (D.S.) <code>!fine</code>. Texte au-dessus de la portée : <code>^Refrain_x2</code>.</li>
                   <li><b>Paroles</b> : coupez les syllabes avec un tiret : <code>Gra- ce in- fi- nie</code>. Une liste de plusieurs paroles = plusieurs couplets.</li>
-                  <li>Indentez avec des <b>espaces</b> (jamais de tabulation) et mettez une espace après chaque « : ».</li>
+                  <li>Indentez avec des <b>espaces</b> (jamais de tabulation), mettez une espace après chaque « : », et écrivez les notes dans un bloc <code>notes: |</code> quand elles commencent par <code>!</code> ou <code>@</code>.</li>
                 </ul>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm mt-3"
+                  disabled={!(draft.text.trim() === "" || draft.text === templateFor("yaml") || draft.text === YAML_EXAMPLE_FULL)}
+                  onClick={() => setDraft({ ...draft, text: YAML_EXAMPLE_FULL })}
+                  title="Disponible tant que vous n'avez pas modifié le modèle de départ"
+                >
+                  Charger un exemple complet (4 voix, accords, nuances)
+                </button>
               </div>
             ) : (
               <p className="mt-2" style={{ color: "var(--color-on-surface-variant)" }}>
