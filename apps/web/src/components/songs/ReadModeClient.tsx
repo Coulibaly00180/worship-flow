@@ -118,7 +118,7 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
   const border = light ? "border-black/10" : "border-white/10"
 
   return (
-    <div className={`fixed inset-0 flex flex-col select-none ${light ? "bg-white text-black" : "bg-[#0d1117] text-white"}`}>
+    <div className={`fixed inset-0 z-50 flex flex-col select-none ${light ? "bg-white text-black" : "bg-[#0d1117] text-white"}`}>
       {/* Barre du haut */}
       <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b ${border}`}>
         <Link href={`/app/songs/${song.id}`} aria-label="Quitter le mode lecture" className={`flex items-center gap-2 ${muted} hover:opacity-100`}>
