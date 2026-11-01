@@ -39,7 +39,7 @@ npm run dev
 ```bash
 cp .env.docker.example .env.docker      # remplir les CHANGE_ME
 docker compose -f docker-compose.local.yml up --build   # http://localhost:3010
-docker build -f apps/web/Dockerfile -t church-presenter-web .   # image de production
+docker build -f apps/web/Dockerfile -t worship-flow-web .   # image de production
 ```
 
 ## Qualité du code

@@ -34,11 +34,11 @@ PostgreSQL Supabase (free tier)
 
 ## 0. Docker (testé) et Prisma 7
 
-**Image de production** — `docker build -f apps/web/Dockerfile -t church-presenter-web .` (contexte = racine du dépôt).
+**Image de production** — `docker build -f apps/web/Dockerfile -t worship-flow-web .` (contexte = racine du dépôt).
 Sur Docker Desktop, si `apk add` échoue en DNS, ajouter `--network=host`.
 
 ```bash
-docker run -d -p 3000:3000   -e DATABASE_URL=postgresql://user:pass@hote:5432/base   -e AUTH_SECRET=$(openssl rand -base64 32)   -e AUTH_URL=https://votre-domaine -e AUTH_TRUST_HOST=true   church-presenter-web
+docker run -d -p 3000:3000   -e DATABASE_URL=postgresql://user:pass@hote:5432/base   -e AUTH_SECRET=$(openssl rand -base64 32)   -e AUTH_URL=https://votre-domaine -e AUTH_TRUST_HOST=true   worship-flow-web
 ```
 
 - Au démarrage, `docker-entrypoint.sh` exécute `prisma migrate deploy --config=./prisma.config.ts` (désactivable avec `RUN_MIGRATIONS=false`), puis lance Next.
@@ -70,7 +70,7 @@ liens `.next/node_modules` de Turbopack repointés dans l'image, `pg` déclaré 
 ### 2.1 Créer le projet
 
 1. Dashboard Vercel → **Add New Project**
-2. Importer le dépôt GitHub `church-presenter`
+2. Importer le dépôt GitHub `worship-flow`
 3. **Framework Preset** : Next.js (détecté automatiquement)
 4. **Root Directory** : `apps/web` ← important, c'est un monorepo
 5. **Build Command** : laisser le défaut (`next build`)

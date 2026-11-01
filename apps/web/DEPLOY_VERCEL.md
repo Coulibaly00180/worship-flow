@@ -35,7 +35,7 @@
 
 1. Connectez-vous sur [vercel.com](https://vercel.com)
 2. **Add New → Project**
-3. Sélectionnez votre dépôt `church-presenter`
+3. Sélectionnez votre dépôt `worship-flow`
 4. Dans **Configure Project** :
    - **Framework Preset** : `Next.js` (auto-détecté)
    - **Root Directory** : `apps/web`

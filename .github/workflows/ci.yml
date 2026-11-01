@@ -59,4 +59,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build image
-        run: docker build -f apps/web/Dockerfile -t church-presenter-web:ci .
+        run: docker build -f apps/web/Dockerfile -t worship-flow-web:ci .
