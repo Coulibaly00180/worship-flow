@@ -1,6 +1,6 @@
-# Church Presenter
+# Worship Flow
 
-**Church Presenter** est une application web destinée aux chantres et à la chorale : bibliothèque de chants, partitions, plans de service et suivi de l'apprentissage de chacun.
+**Worship Flow** est une application web destinée aux chantres et à la chorale : bibliothèque de chants, partitions, plans de service et suivi de l'apprentissage de chacun.
 
 ## Fonctionnalités
 
@@ -12,6 +12,11 @@
 - **Favoris et apprentissage** — chaque membre marque ses favoris et son niveau (à apprendre, en cours, maîtrisé).
 - **Plans de service** — ordre du service par date, duplication d'un plan, vue imprimable.
 - **Comptes et rôles** — `ADMIN`, `RESPONSABLE_CHANTRE`, `CHANTRE`, `LECTEUR` (voir `apps/web/src/lib/roles.ts`).
+
+## Interface
+
+Clair chaleureux par défaut (sombre en option), pensée pour le téléphone : barre de navigation en bas, polices lisibles auto-hébergées, tout en français.
+Voir `docs/web-chantre/design-system.md`.
 
 ## Prérequis
 

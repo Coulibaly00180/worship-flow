@@ -82,7 +82,7 @@ export function NewUserDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "var(--color-scrim)" }}>
       <div className="card w-full max-w-md mx-4" style={{ background: "var(--color-surface)", border: "1px solid var(--color-outline-variant)" }}>
         <div className="flex items-center justify-between pb-4 mb-4" style={{ borderBottom: "1px solid var(--color-outline-variant)" }}>
           <h2 className="text-base font-bold" style={{ color: "var(--color-primary)" }}>Nouvel utilisateur</h2>

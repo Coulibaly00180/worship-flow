@@ -118,7 +118,7 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
   const border = light ? "border-black/10" : "border-white/10"
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col select-none ${light ? "bg-white text-black" : "bg-[#0d1117] text-white"}`}>
+    <div className={`fixed inset-0 z-50 flex flex-col select-none ${light ? "bg-[#fbf8f2] text-[#271f17]" : "bg-[#17120e] text-white"}`}>
       {/* Barre du haut */}
       <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b ${border}`}>
         <Link href={`/app/songs/${song.id}`} aria-label="Quitter le mode lecture" className={`flex items-center gap-2 ${muted} hover:opacity-100`}>
@@ -128,8 +128,8 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
         <div className="flex items-center gap-1.5">
           {scores.length > 0 && (
             <div className="flex rounded-lg overflow-hidden" role="tablist" aria-label="Contenu affiché">
-              <button type="button" role="tab" aria-selected={tab === "lyrics"} onClick={() => setTab("lyrics")} className={`px-3 h-8 text-xs font-semibold ${tab === "lyrics" ? (light ? "bg-black text-white" : "bg-white text-[#0d1117]") : btn}`}>Paroles</button>
-              <button type="button" role="tab" aria-selected={tab === "score"} onClick={() => setTab("score")} className={`px-3 h-8 text-xs font-semibold flex items-center gap-1 ${tab === "score" ? (light ? "bg-black text-white" : "bg-white text-[#0d1117]") : btn}`}><Music size={12} />Partition</button>
+              <button type="button" role="tab" aria-selected={tab === "lyrics"} onClick={() => setTab("lyrics")} className={`px-3 h-8 text-xs font-semibold ${tab === "lyrics" ? (light ? "bg-black text-white" : "bg-white text-[#17120e]") : btn}`}>Paroles</button>
+              <button type="button" role="tab" aria-selected={tab === "score"} onClick={() => setTab("score")} className={`px-3 h-8 text-xs font-semibold flex items-center gap-1 ${tab === "score" ? (light ? "bg-black text-white" : "bg-white text-[#17120e]") : btn}`}><Music size={12} />Partition</button>
             </div>
           )}
           {tab === "lyrics" && (
@@ -223,7 +223,7 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
                   type="button"
                   onClick={() => setCurrent(i)}
                   className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
-                    i === current ? (light ? "bg-black text-white" : "bg-white text-[#0d1117]") : `${btn} ${muted}`
+                    i === current ? (light ? "bg-black text-white" : "bg-white text-[#17120e]") : `${btn} ${muted}`
                   }`}
                 >
                   {blockTypeLabel[b.type] ?? b.type}

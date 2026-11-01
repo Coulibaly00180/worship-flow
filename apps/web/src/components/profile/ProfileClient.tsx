@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react"
 import { toast } from "sonner"
-import { Heart, TrendingUp, User } from "lucide-react"
+import Link from "next/link"
+import { signOut } from "next-auth/react"
+import { Heart, TrendingUp, User, LogOut, Users, ChevronRight } from "lucide-react"
+import { ThemeToggle } from "@/components/layout/ThemeToggle"
+import { clearOfflineCaches } from "@/lib/offline"
+import { canAccessUserAdmin } from "@/lib/roles"
 
 type ProfileUser = {
   id: string
@@ -82,8 +87,7 @@ export function ProfileClient({
 
   return (
     <div className="page-container max-w-3xl">
-      <p className="eyebrow">Mon Espace</p>
-      <h1 className="page-title mb-8">Profil</h1>
+      <h1 className="page-title mb-6">Mon profil</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Colonne gauche */}
@@ -91,7 +95,7 @@ export function ProfileClient({
           <div className="card flex flex-col items-center text-center">
             <div
               className="w-20 h-20 rounded-full text-2xl font-bold flex items-center justify-center mb-3"
-              style={{ background: "linear-gradient(135deg, var(--color-primary-deep), var(--color-primary-dim))", color: "#fff" }}
+              style={{ background: "var(--color-primary-container)", color: "var(--color-on-primary-container)" }}
             >
               {initials}
             </div>
@@ -100,7 +104,7 @@ export function ProfileClient({
             <p className="text-xs mt-0.5" style={{ color: "var(--color-on-surface-variant)" }}>{user.email}</p>
             <span
               className="mt-2 px-2.5 py-1 text-xs font-semibold rounded-full"
-              style={{ background: "rgba(255,255,255,0.07)", color: "var(--color-on-surface-variant)" }}
+              style={{ background: "var(--color-surface-high)", color: "var(--color-on-surface-variant)" }}
             >
               {ROLE_LABELS[user.role] ?? user.role}
             </span>
@@ -118,6 +122,31 @@ export function ProfileClient({
               <p className="text-xs" style={{ color: "var(--color-on-surface-variant)" }}>Maîtrisés</p>
             </div>
           </div>
+
+          <section className="card" aria-labelledby="appearance">
+            <h2 id="appearance" className="text-base font-bold mb-3" style={{ fontFamily: "var(--font-sans)" }}>Apparence</h2>
+            <ThemeToggle />
+            <p className="text-sm mt-2" style={{ color: "var(--color-on-surface-variant)" }}>
+              « Auto » suit le réglage de votre appareil.
+            </p>
+          </section>
+
+          {canAccessUserAdmin(user.role) && (
+            <Link href="/app/admin/users" className="card flex items-center gap-3" style={{ textDecoration: "none", minHeight: 64 }}>
+              <Users size={20} style={{ color: "var(--color-primary)" }} aria-hidden="true" />
+              <span className="flex-1 font-bold" style={{ color: "var(--color-on-surface)" }}>Gérer les utilisateurs</span>
+              <ChevronRight size={18} style={{ color: "var(--color-on-surface-variant)" }} aria-hidden="true" />
+            </Link>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-secondary w-full"
+            onClick={async () => { await clearOfflineCaches(); await signOut({ callbackUrl: "/login" }) }}
+          >
+            <LogOut size={18} aria-hidden="true" />
+            Se déconnecter
+          </button>
         </div>
 
         {/* Colonne droite */}

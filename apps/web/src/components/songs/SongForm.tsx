@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Plus, Trash2, GripVertical } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 
 type BlockType = "VERSE" | "CHORUS" | "BRIDGE" | "INTRO" | "OUTRO" | "OTHER"
 
@@ -134,10 +134,10 @@ export function SongForm({ initial }: Props) {
       {/* Left col — Informations */}
       <div className="flex flex-col gap-6">
         <section className="card">
-          <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--color-primary)" }}>
+          <h2 className="text-base font-bold mb-4 flex items-center gap-2" style={{ color: "var(--color-primary)" }}>
             <span
               className="w-5 h-5 rounded-full text-xs flex items-center justify-center"
-              style={{ background: "var(--color-primary-deep)", color: "#fff" }}
+              style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
             >1</span>
             Informations
           </h2>
@@ -167,10 +167,10 @@ export function SongForm({ initial }: Props) {
         </section>
 
         <section className="card">
-          <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--color-primary)" }}>
+          <h2 className="text-base font-bold mb-4 flex items-center gap-2" style={{ color: "var(--color-primary)" }}>
             <span
               className="w-5 h-5 rounded-full text-xs flex items-center justify-center"
-              style={{ background: "var(--color-primary-deep)", color: "#fff" }}
+              style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
             >2</span>
             Classification
           </h2>
@@ -193,15 +193,15 @@ export function SongForm({ initial }: Props) {
       {/* Right col — Blocs */}
       <div className="flex flex-col gap-4">
         <section className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold flex items-center gap-2" style={{ color: "var(--color-primary)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--color-primary)" }}>
               <span
                 className="w-5 h-5 rounded-full text-xs flex items-center justify-center"
-                style={{ background: "var(--color-primary-deep)", color: "#fff" }}
+                style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
               >3</span>
               Structure &amp; Paroles
             </h2>
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               {[
                 { type: "VERSE" as BlockType, label: "+ Couplet" },
                 { type: "CHORUS" as BlockType, label: "+ Refrain" },
@@ -211,7 +211,6 @@ export function SongForm({ initial }: Props) {
                   type="button"
                   onClick={() => addBlock(type)}
                   className="btn btn-secondary btn-sm"
-                  style={{ padding: "4px 10px", fontSize: "0.75rem" }}
                 >
                   {label}
                 </button>
@@ -227,13 +226,19 @@ export function SongForm({ initial }: Props) {
                 style={{ border: "1px solid var(--color-outline-variant)", borderRadius: "var(--radius-md)" }}
               >
                 <div
-                  className="flex items-center gap-2 px-3 py-2"
+                  className="flex items-center gap-2 px-3 py-1"
                   style={{
                     background: "var(--color-surface-low)",
                     borderBottom: "1px solid var(--color-outline-variant)",
                   }}
                 >
-                  <GripVertical size={14} style={{ color: "var(--color-outline)" }} className="shrink-0" />
+                  <span
+                    className="grid place-items-center rounded-full text-sm font-bold shrink-0"
+                    style={{ width: 30, height: 30, background: "var(--color-primary)", color: "var(--color-on-primary)" }}
+                    aria-hidden="true"
+                  >
+                    {idx + 1}
+                  </span>
                   <select
                     value={block.type}
                     onChange={(e) => {
@@ -242,22 +247,22 @@ export function SongForm({ initial }: Props) {
                       updateBlock(block.id, "type", t)
                       updateBlock(block.id, "label", lbl)
                     }}
-                    className="text-xs font-semibold bg-transparent border-none outline-none cursor-pointer"
-                    style={{ color: "var(--color-primary)" }}
+                    className="font-bold bg-transparent border-none outline-none cursor-pointer flex-1 min-w-0"
+                    style={{ color: "var(--color-on-surface)", fontSize: "1rem", minHeight: 44 }}
+                    aria-label={`Type du bloc ${idx + 1}`}
                   >
                     {BLOCK_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
                   </select>
-                  <span className="text-xs ml-auto mr-1" style={{ color: "var(--color-outline)" }}>{idx + 1}</span>
-                  {blocks.length > 1 && (
+                                    {blocks.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeBlock(block.id)}
-                      style={{ color: "var(--color-outline)" }}
-                      className="transition-colors hover:text-red-400"
+                      className="icon-btn icon-btn-danger"
+                      aria-label={`Supprimer le bloc ${idx + 1}`}
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={18} aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -267,7 +272,7 @@ export function SongForm({ initial }: Props) {
                   onChange={(e) => updateBlock(block.id, "content", e.target.value)}
                   placeholder="Saisir les paroles ici…"
                   rows={4}
-                  className="w-full px-3 py-2.5 text-sm resize-none outline-none"
+                  className="w-full px-3 py-3 resize-y outline-none"
                   style={{
                     background: "var(--color-surface-low)",
                     color: "var(--color-on-surface)",

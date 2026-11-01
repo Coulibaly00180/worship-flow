@@ -99,7 +99,7 @@ export function ImportClient() {
           className="relative p-12 text-center cursor-pointer transition-all rounded-xl"
           style={{
             border: `2px dashed ${dragging ? "var(--color-secondary)" : "var(--color-outline-variant)"}`,
-            background: dragging ? "rgba(68,226,205,0.06)" : "transparent",
+            background: dragging ? "var(--color-primary-container)" : "transparent",
           }}
         >
           <input
@@ -112,7 +112,7 @@ export function ImportClient() {
           />
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
-            style={{ background: "rgba(255,255,255,0.07)" }}
+            style={{ background: "var(--color-surface-high)" }}
           >
             <Upload size={22} style={{ color: "var(--color-on-surface-variant)" }} />
           </div>
@@ -146,7 +146,7 @@ export function ImportClient() {
                 className="text-left p-3 rounded-lg transition-all"
                 style={{
                   border: `2px solid ${mode === value ? "var(--color-secondary)" : "var(--color-outline-variant)"}`,
-                  background: mode === value ? "rgba(68,226,205,0.06)" : "transparent",
+                  background: mode === value ? "var(--color-primary-container)" : "transparent",
                 }}
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -185,7 +185,7 @@ export function ImportClient() {
             {!importing && readySongs.length > 0 && (
               <span
                 className="text-xs px-1.5 rounded-full ml-1"
-                style={{ background: "rgba(255,255,255,0.2)" }}
+                style={{ background: "var(--color-surface-high)" }}
               >{readySongs.length}</span>
             )}
           </button>
@@ -220,7 +220,7 @@ export function ImportClient() {
               <li
                 key={i}
                 className="flex items-start gap-3 px-5 py-4"
-                style={{ borderBottom: "1px solid rgba(70,69,84,0.5)" }}
+                style={{ borderBottom: "1px solid var(--color-outline-variant)" }}
               >
                 <div className="mt-0.5 shrink-0" style={{ color: item.ok ? "var(--color-mastered)" : "var(--color-error)" }}>
                   {item.ok ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}

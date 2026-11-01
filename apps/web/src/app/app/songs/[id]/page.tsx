@@ -1,10 +1,9 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Eye, Pencil, Music } from "lucide-react"
+import { ArrowLeft, BookOpen, Pencil, Music } from "lucide-react"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { LearningBadge } from "@/components/songs/LearningBadge"
 import { FavoriteToggle } from "@/components/songs/FavoriteToggle"
 import { LearningSelect } from "@/components/songs/LearningSelect"
 import { OfflineButton } from "@/components/pwa/OfflineButton"
@@ -13,13 +12,29 @@ import { canEditSongs } from "@/lib/roles"
 
 type Props = { params: Promise<{ id: string }> }
 
+export async function generateMetadata({ params }: Props) {
+  const { id } = await params
+  const song = await prisma.song.findUnique({ where: { id }, select: { title: true } })
+  return { title: song?.title ?? "Chant" }
+}
+
 const blockTypeLabel: Record<string, string> = {
   VERSE: "Couplet",
   CHORUS: "Refrain",
-  BRIDGE: "Bridge",
+  BRIDGE: "Pont",
   INTRO: "Intro",
-  OUTRO: "Outro",
+  OUTRO: "Final",
   OTHER: "Autre",
+}
+
+function parseTags(tags: string | null): string[] {
+  if (!tags) return []
+  try {
+    const arr = JSON.parse(tags)
+    return Array.isArray(arr) ? arr.map(String) : []
+  } catch {
+    return []
+  }
 }
 
 export default async function SongDetailPage({ params }: Props) {
@@ -45,121 +60,100 @@ export default async function SongDetailPage({ params }: Props) {
 
   const isFavorite = song.favorites.length > 0
   const learningStatus = song.learnings[0]?.status ?? null
-
-  function parseTags(tags: string | null): string[] {
-    if (!tags) return []
-    try {
-      const arr = JSON.parse(tags)
-      return Array.isArray(arr) ? arr.map(String) : []
-    } catch {
-      return []
-    }
-  }
-
+  const canEdit = canEditSongs(session.user.role)
   const tags = parseTags(song.tags)
 
+  // Numérotation des couplets : 1, 2, 3… (et non leur rang parmi tous les blocs)
+  const labelled = song.blocks.map((b, i) => {
+    const base = blockTypeLabel[b.type] ?? b.type
+    const verseNo = song.blocks.slice(0, i + 1).filter((x) => x.type === "VERSE").length
+    return { ...b, label: b.type === "VERSE" ? `${base} ${verseNo}` : base }
+  })
+
   return (
-    <div className="page-container max-w-3xl">
+    <div className="page-container" style={{ maxWidth: 820 }}>
       <Link
         href="/app/songs"
-        className="inline-flex items-center gap-1.5 text-sm mb-6 transition-colors"
-        style={{ color: "var(--color-on-surface-variant)" }}
+        className="inline-flex items-center gap-2 text-base font-semibold mb-5 print:hidden"
+        style={{ color: "var(--color-on-surface-variant)", minHeight: 44 }}
       >
-        <ArrowLeft size={14} />
-        Retour à la bibliothèque
+        <ArrowLeft size={18} aria-hidden="true" />
+        Tous les chants
       </Link>
 
-      {/* Header card */}
-      <div className="card mb-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {tags.map((t) => (
-                  <span key={t} className="key-badge">{t}</span>
-                ))}
-              </div>
-            )}
-            <h1 className="page-title leading-tight">{song.title}</h1>
-            {song.artist && (
-              <p className="mt-1" style={{ color: "var(--color-on-surface-variant)" }}>{song.artist}</p>
-            )}
-
-            <div className="flex flex-wrap gap-2 mt-3">
-              <LearningBadge status={learningStatus} />
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            <FavoriteToggle songId={song.id} initial={isFavorite} />
-            <Link
-              href={`/app/songs/${song.id}/read`}
-              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
-              style={{ border: "1px solid var(--color-outline-variant)", color: "var(--color-on-surface-variant)" }}
-              title="Mode lecture"
-            >
-              <Eye size={16} />
-            </Link>
-            {canEditSongs(session.user.role) && (
-              <Link
-                href={`/app/songs/${song.id}/edit`}
-                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
-                style={{ border: "1px solid var(--color-outline-variant)", color: "var(--color-on-surface-variant)" }}
-                title="Modifier"
-              >
-                <Pencil size={16} />
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* Learning status selector */}
-        <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--color-outline-variant)" }}>
-          <LearningSelect songId={song.id} initial={learningStatus} />
-        </div>
-      </div>
-
-      <div className="mb-3 flex justify-end print:hidden">
-        <OfflineButton
-          withAbc={song.scores.some((sc) => sc.kind === "ABC")}
-          urls={[
-            `/app/songs/${song.id}`,
-            `/app/songs/${song.id}/read`,
-            ...song.scores.filter((sc) => sc.kind === "FILE").map((sc) => `/api/songs/${song.id}/scores/${sc.id}`),
-          ]}
-        />
-      </div>
-
-      <ScoresSection songId={song.id} songTitle={song.title} initial={song.scores} canEdit={canEditSongs(session.user.role)} />
-
-      {/* Blocks */}
-      <div className="flex flex-col gap-6">
-        {song.blocks.map((block, idx) => (
-          <div key={block.id}>
-            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "var(--color-on-surface-variant)" }}>
-              {blockTypeLabel[block.type] ?? block.type}
-              {block.type === "VERSE" ? ` ${idx + 1}` : ""}
-            </p>
-            <div
-              className="pl-4 text-[17px] leading-relaxed whitespace-pre-line"
-              style={{ borderLeft: "2px solid var(--color-outline-variant)", color: "var(--color-on-surface)", fontFamily: "var(--font-sans)" }}
-            >
-              {block.content}
-            </div>
-          </div>
-        ))}
-
-        {song.blocks.length === 0 && (
-          <div
-            className="text-center py-8 rounded-xl"
-            style={{ border: "1px dashed var(--color-outline-variant)", color: "var(--color-on-surface-variant)" }}
-          >
-            <Music size={24} className="mx-auto mb-2 opacity-40" />
-            <p className="text-sm">Aucun bloc de paroles.</p>
+      {/* En-tête */}
+      <header className="card mb-6">
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {tags.map((t) => (
+              <Link key={t} href={`/app/songs?tag=${encodeURIComponent(t)}`} className="key-badge" style={{ textDecoration: "none" }}>{t}</Link>
+            ))}
           </div>
         )}
-      </div>
+        <h1 className="page-title">{song.title}</h1>
+        {song.artist && (
+          <p className="mt-1 text-lg" style={{ color: "var(--color-on-surface-variant)" }}>{song.artist}</p>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2 mt-5 print:hidden">
+          <Link href={`/app/songs/${song.id}/read`} className="btn btn-primary btn-lg">
+            <BookOpen size={20} aria-hidden="true" />
+            Lire en mode scène
+          </Link>
+          <FavoriteToggle songId={song.id} initial={isFavorite} />
+          {canEdit && (
+            <Link href={`/app/songs/${song.id}/edit`} className="btn btn-secondary" aria-label="Modifier le chant">
+              <Pencil size={17} aria-hidden="true" />
+              <span className="hidden sm:inline">Modifier</span>
+            </Link>
+          )}
+          <OfflineButton
+            withAbc={song.scores.some((sc) => sc.kind === "ABC")}
+            urls={[
+              `/app/songs/${song.id}`,
+              `/app/songs/${song.id}/read`,
+              ...song.scores.filter((sc) => sc.kind === "FILE").map((sc) => `/api/songs/${song.id}/scores/${sc.id}`),
+            ]}
+          />
+        </div>
+
+        <div className="mt-6 pt-5 print:hidden" style={{ borderTop: "1px solid var(--color-outline-variant)" }}>
+          <h2 className="text-base font-bold mb-3" style={{ fontFamily: "var(--font-sans)" }}>Où j&apos;en suis sur ce chant</h2>
+          <LearningSelect songId={song.id} initial={learningStatus} />
+        </div>
+      </header>
+
+      <ScoresSection songId={song.id} songTitle={song.title} initial={song.scores} canEdit={canEdit} />
+
+      {/* Paroles */}
+      <section aria-labelledby="lyrics-title">
+        <h2 id="lyrics-title" className="text-2xl font-bold mb-4">Paroles</h2>
+        <div className="flex flex-col gap-5">
+          {labelled.map((block) => (
+            <article key={block.id} className="card" style={{ padding: "18px 20px" }}>
+              <h3
+                className="text-sm font-bold uppercase mb-2"
+                style={{ color: "var(--color-secondary)", letterSpacing: "0.05em", fontFamily: "var(--font-sans)" }}
+              >
+                {block.label}
+              </h3>
+              <p className="whitespace-pre-line" style={{ fontSize: "1.1875rem", lineHeight: 1.75, color: "var(--color-on-surface)" }}>
+                {block.content}
+              </p>
+            </article>
+          ))}
+
+          {song.blocks.length === 0 && (
+            <div
+              className="text-center py-10 rounded-xl"
+              style={{ border: "2px dashed var(--color-outline-variant)", color: "var(--color-on-surface-variant)" }}
+            >
+              <Music size={28} className="mx-auto mb-2" aria-hidden="true" />
+              <p>Aucune parole saisie pour ce chant.</p>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   )
 }

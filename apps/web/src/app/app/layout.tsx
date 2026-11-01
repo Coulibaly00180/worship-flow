@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import { SideNav, MobileNav } from "@/components/layout/SideNav"
+import { SideNav, MobileTopBar, BottomNav } from "@/components/layout/SideNav"
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -19,13 +19,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--color-bg)" }}>
+    <div className="min-h-dvh" style={{ background: "var(--color-bg)" }}>
+      <a href="#contenu" className="skip-link">Aller au contenu</a>
       <SideNav user={user} />
-      <MobileNav user={user} />
+      <MobileTopBar user={user} />
 
-      <main className="min-h-screen lg:ml-[var(--sidebar-width)]">
+      <main id="contenu" className="min-h-dvh lg:ml-[var(--sidebar-width)]">
         {children}
       </main>
+
+      <BottomNav />
     </div>
   )
 }

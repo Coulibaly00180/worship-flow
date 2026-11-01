@@ -28,7 +28,7 @@ export function ConfirmDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+      style={{ background: "var(--color-scrim)" }}
       onClick={onCancel}
     >
       <div
@@ -57,7 +57,7 @@ export function ConfirmDialog({
             className="btn btn-sm"
             style={variant === "destructive"
               ? { background: "var(--color-error-bg)", color: "var(--color-error)", border: "1px solid var(--color-error)" }
-              : { background: "var(--color-primary-deep)", color: "#fff" }
+              : { background: "var(--color-primary)", color: "var(--color-on-primary)" }
             }
           >
             {confirmLabel}

@@ -14,8 +14,9 @@ export function FavoriteToggle({ songId, initial }: { songId: string; initial: b
       const res = await fetch(`/api/songs/${songId}/favorite`, { method })
       if (res.ok) {
         setIsFav(!isFav)
+        toast.success(isFav ? "Retiré des favoris" : "Ajouté aux favoris")
       } else {
-        toast.error("Erreur lors de la mise à jour des favoris")
+        toast.error("Impossible de mettre à jour les favoris. Réessayez.")
       }
     })
   }
@@ -25,14 +26,21 @@ export function FavoriteToggle({ songId, initial }: { songId: string; initial: b
       type="button"
       onClick={toggle}
       disabled={isPending}
-      className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50"
-      style={{ border: "1px solid var(--color-outline-variant)" }}
-      title={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
+      aria-pressed={isFav}
+      aria-label={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
+      className="grid place-items-center rounded-xl border disabled:opacity-60"
+      style={{
+        width: 44,
+        height: 44,
+        borderColor: isFav ? "var(--color-primary)" : "var(--color-outline)",
+        background: isFav ? "var(--color-primary-container)" : "var(--color-surface)",
+      }}
     >
       <Heart
-        size={16}
+        size={20}
+        aria-hidden="true"
         style={isFav
-          ? { fill: "var(--color-tertiary)", color: "var(--color-tertiary)" }
+          ? { fill: "var(--color-primary)", color: "var(--color-primary)" }
           : { color: "var(--color-on-surface-variant)" }
         }
       />

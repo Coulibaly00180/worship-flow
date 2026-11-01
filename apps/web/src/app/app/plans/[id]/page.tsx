@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Pencil, Music2, BookOpen, Megaphone, Timer } from "lucide-react"
+import { ArrowLeft, Pencil, Music2, BookOpen, Megaphone, Timer, ChevronRight, Clock } from "lucide-react"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
@@ -9,6 +9,13 @@ import { OfflineButton } from "@/components/pwa/OfflineButton"
 import { canManagePlans } from "@/lib/roles"
 
 type Props = { params: Promise<{ id: string }> }
+
+export async function generateMetadata({ params }: Props) {
+  const { id } = await params
+  const plan = await prisma.servicePlan.findUnique({ where: { id }, select: { title: true, date: true } })
+  if (!plan) return { title: "Plan de service" }
+  return { title: plan.title ?? new Date(plan.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) }
+}
 
 const KIND_ICON: Record<string, React.ElementType> = {
   SONG_BLOCK: Music2,
@@ -48,7 +55,15 @@ const DURATION_MIN: Record<string, number> = {
 function formatDuration(min: number) {
   const m = Math.floor(min)
   const s = Math.round((min - m) * 60)
-  return s > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${m}:00`
+  return s > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${m} min`
+}
+
+function parseTags(tags: string | null): string[] {
+  if (!tags) return []
+  try {
+    const arr = JSON.parse(tags)
+    return Array.isArray(arr) ? arr.map(String) : []
+  } catch { return [] }
 }
 
 export default async function PlanDetailPage({ params }: Props) {
@@ -70,6 +85,8 @@ export default async function PlanDetailPage({ params }: Props) {
   })
 
   if (!plan || plan.deletedAt) notFound()
+
+  const canManage = canManagePlans(session.user.role)
 
   // Pages et fichiers à enregistrer pour consulter le plan sans réseau
   const offlineUrls = [
@@ -94,136 +111,119 @@ export default async function PlanDetailPage({ params }: Props) {
     year: "numeric",
   })
 
-  function parseTags(tags: string | null): string[] {
-    if (!tags) return []
-    try {
-      const arr = JSON.parse(tags)
-      return Array.isArray(arr) ? arr.map(String) : []
-    } catch { return [] }
-  }
-
   return (
-    <div className="page-container max-w-3xl">
+    <div className="page-container" style={{ maxWidth: 820 }}>
       <Link
         href="/app/plans"
-        className="inline-flex items-center gap-1.5 text-sm mb-6 transition-colors print:hidden"
-        style={{ color: "var(--color-on-surface-variant)" }}
+        className="inline-flex items-center gap-2 text-base font-semibold mb-5 print:hidden"
+        style={{ color: "var(--color-on-surface-variant)", minHeight: 44 }}
       >
-        <ArrowLeft size={14} />
-        Plans de service
+        <ArrowLeft size={18} aria-hidden="true" />
+        Tous les plans
       </Link>
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-8">
-        <div>
-          <p className="eyebrow">Plan de service</p>
-          <h1 className="page-title capitalize">{plan.title ?? dateStr}</h1>
-          {plan.title && (
-            <p className="text-sm mt-1 capitalize" style={{ color: "var(--color-on-surface-variant)" }}>{dateStr}</p>
-          )}
-        </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          {canManagePlans(session.user.role) && (
-            <Link href={`/app/plans/${plan.id}/edit`} className="btn btn-secondary btn-sm mt-1 print:hidden">
-              <Pencil size={14} />
+      <header className="mb-6">
+        <p className="eyebrow">Plan de service</p>
+        <h1 className="page-title first-cap">{plan.title ?? dateStr}</h1>
+        {plan.title && (
+          <p className="mt-1 text-lg first-cap" style={{ color: "var(--color-on-surface-variant)" }}>{dateStr}</p>
+        )}
+
+        <div className="flex flex-wrap items-start gap-2 mt-5 print:hidden">
+          {canManage && (
+            <Link href={`/app/plans/${plan.id}/edit`} className="btn btn-primary">
+              <Pencil size={17} aria-hidden="true" />
               Modifier
             </Link>
           )}
-          <PlanActions planId={plan.id} canManage={canManagePlans(session.user.role)} />
+          <PlanActions planId={plan.id} canManage={canManage} />
           <OfflineButton urls={offlineUrls} withAbc={plan.items.some((it) => it.song?.scores.some((sc) => sc.kind === "ABC"))} />
         </div>
-      </div>
+      </header>
 
-      {/* Items */}
-      <div className="card-flat overflow-hidden mb-6" style={{ padding: 0, borderRadius: "var(--radius-xl)" }}>
-        <div
-          className="flex items-center justify-between px-5 py-3"
-          style={{ borderBottom: "1px solid var(--color-outline-variant)", background: "var(--color-surface-low)" }}
-        >
-          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--color-on-surface-variant)" }}>
-            Ordre du service
-          </span>
-          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--color-on-surface-variant)" }}>
-            Durée
-          </span>
+      <section aria-labelledby="order-title">
+        <div className="flex items-end justify-between mb-3">
+          <h2 id="order-title" className="text-2xl font-bold">Ordre du service</h2>
+          <p className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--color-on-surface-variant)" }}>
+            <Clock size={16} aria-hidden="true" />
+            {formatDuration(totalMinutes)} environ
+          </p>
         </div>
 
         {plan.items.length === 0 ? (
-          <div className="py-12 text-center text-sm" style={{ color: "var(--color-on-surface-variant)" }}>
+          <div
+            className="py-12 text-center rounded-xl"
+            style={{ border: "2px dashed var(--color-outline-variant)", color: "var(--color-on-surface-variant)" }}
+          >
             Aucun élément dans ce plan.
           </div>
         ) : (
-          plan.items.map((item) => {
-            const Icon = KIND_ICON[item.kind] ?? Music2
-            const isSong = item.kind === "SONG_BLOCK"
-            const tags = parseTags(item.song?.tags ?? null)
-            const dur = DURATION_MIN[item.kind] ?? 2
+          <ol className="flex flex-col gap-2.5">
+            {plan.items.map((item, i) => {
+              const Icon = KIND_ICON[item.kind] ?? Music2
+              const isSong = item.kind === "SONG_BLOCK" && !!item.song
+              const tags = parseTags(item.song?.tags ?? null)
+              const title = item.title ?? item.song?.title ?? KIND_LABEL[item.kind] ?? "Élément"
 
-            return (
-              <div
-                key={item.id}
-                className="flex items-center gap-4 px-5 py-4 transition-colors"
-                style={{ borderBottom: "1px solid rgba(70,69,84,0.5)" }}
-              >
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                  style={{
-                    background: isSong ? "rgba(192,193,255,0.12)" : "rgba(255,255,255,0.05)",
-                    color: isSong ? "var(--color-primary)" : "var(--color-on-surface-variant)",
-                  }}
-                >
-                  <Icon size={16} />
-                </div>
+              const body = (
+                <>
+                  <span
+                    className="grid place-items-center shrink-0 rounded-full font-bold"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      background: isSong ? "var(--color-primary)" : "var(--color-surface-high)",
+                      color: isSong ? "var(--color-on-primary)" : "var(--color-on-surface-variant)",
+                    }}
+                    aria-hidden="true"
+                  >
+                    {i + 1}
+                  </span>
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: "var(--color-on-surface)" }}>
-                    {item.title ?? item.song?.title ?? KIND_LABEL[item.kind]}
-                  </p>
-                  {item.notes && (
-                    <p className="text-xs mt-0.5 whitespace-pre-line" style={{ color: "var(--color-on-surface-variant)" }}>
-                      {item.notes}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {tags.slice(0, 2).map((t) => (
-                      <span key={t} className="key-badge">{t}</span>
-                    ))}
-                    {!isSong && (
-                      <span className="text-xs" style={{ color: "var(--color-on-surface-variant)" }}>
-                        {KIND_LABEL[item.kind]}
+                  <div className="flex-1 min-w-0 py-3">
+                    <p className="font-bold text-lg leading-snug" style={{ color: "var(--color-on-surface)" }}>{title}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <span className="inline-flex items-center gap-1 text-sm" style={{ color: "var(--color-on-surface-variant)" }}>
+                        <Icon size={14} aria-hidden="true" />
+                        {KIND_LABEL[item.kind] ?? item.kind}
                       </span>
+                      {tags.slice(0, 2).map((t) => (
+                        <span key={t} className="key-badge">{t}</span>
+                      ))}
+                    </div>
+                    {item.notes && (
+                      <p className="mt-1.5 text-base whitespace-pre-line" style={{ color: "var(--color-on-surface-variant)" }}>
+                        {item.notes}
+                      </p>
                     )}
                   </div>
-                </div>
 
-                {isSong && item.song && (
-                  <Link
-                    href={`/app/songs/${item.song.id}`}
-                    className="text-xs font-medium hover:underline shrink-0 print:hidden"
-                    style={{ color: "var(--color-secondary)" }}
-                  >
-                    Voir
-                  </Link>
-                )}
+                  {isSong && <ChevronRight size={20} className="shrink-0 print:hidden" style={{ color: "var(--color-on-surface-variant)" }} aria-hidden="true" />}
+                </>
+              )
 
-                <span className="text-sm font-semibold w-10 text-right shrink-0" style={{ color: "var(--color-on-surface-variant)" }}>
-                  {formatDuration(dur)}
-                </span>
-              </div>
-            )
-          })
+              const cls = "flex items-center gap-3 px-3 rounded-[var(--radius-lg)]"
+              const style = {
+                minHeight: 64,
+                background: "var(--color-surface)",
+                border: "1px solid var(--color-outline-variant)",
+                boxShadow: "var(--shadow-sm)",
+                textDecoration: "none",
+              } as const
+
+              return (
+                <li key={item.id}>
+                  {isSong ? (
+                    <Link href={`/app/songs/${item.song!.id}`} className={cls} style={style}>{body}</Link>
+                  ) : (
+                    <div className={cls} style={style}>{body}</div>
+                  )}
+                </li>
+              )
+            })}
+          </ol>
         )}
-      </div>
-
-      {/* Total */}
-      <div className="flex justify-end">
-        <div className="card" style={{ textAlign: "right", display: "inline-block", minWidth: "160px" }}>
-          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--color-on-surface-variant)" }}>
-            Durée totale estimée
-          </p>
-          <p className="text-3xl font-bold" style={{ color: "var(--color-primary)" }}>{formatDuration(totalMinutes)}</p>
-        </div>
-      </div>
+      </section>
     </div>
   )
 }

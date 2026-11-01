@@ -141,8 +141,7 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
   return (
     <div className="page-container max-w-2xl">
       <div className="page-header">
-        <p className="eyebrow">Plans</p>
-        <h1 className="page-title">
+                <h1 className="page-title">
           {isEdit ? "Modifier le plan" : "Nouveau plan de service"}
         </h1>
       </div>
@@ -150,7 +149,7 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         {/* Info */}
         <div className="card">
-          <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--color-primary)" }}>Informations</h2>
+          <h2 className="text-base font-bold mb-4" style={{ color: "var(--color-primary)" }}>Informations</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="input-label">Date *</label>
@@ -201,45 +200,30 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
                 style={{ border: "1px solid var(--color-outline-variant)", borderRadius: "var(--radius-md)" }}
               >
                 <div
-                  className="flex items-center gap-2 px-3 py-2"
+                  className="flex items-center gap-1 px-3 py-1"
                   style={{ background: "var(--color-surface-low)", borderBottom: "1px solid var(--color-outline-variant)" }}
                 >
-                  <div className="flex flex-col">
-                    <button type="button" onClick={() => moveItem(idx, -1)} disabled={idx === 0} aria-label="Monter" className="disabled:opacity-30" style={{ color: "var(--color-outline)" }}>
-                      <ChevronUp size={13} />
-                    </button>
-                    <button type="button" onClick={() => moveItem(idx, 1)} disabled={idx === items.length - 1} aria-label="Descendre" className="disabled:opacity-30" style={{ color: "var(--color-outline)" }}>
-                      <ChevronDown size={13} />
-                    </button>
-                  </div>
+                  <span
+                    className="grid place-items-center rounded-full text-sm font-bold shrink-0"
+                    style={{ width: 30, height: 30, background: "var(--color-primary)", color: "var(--color-on-primary)" }}
+                    aria-hidden="true"
+                  >
+                    {idx + 1}
+                  </span>
+                  <label className="sr-only" htmlFor={`kind-${idx}`}>Type de l&apos;élément {idx + 1}</label>
                   <select
+                    id={`kind-${idx}`}
                     value={item.kind}
                     onChange={(e) => updateItem(idx, { kind: e.target.value, songId: undefined, song: undefined })}
-                    className="text-xs font-semibold bg-transparent border-none outline-none cursor-pointer"
-                    style={{ color: "var(--color-primary)" }}
+                    className="font-bold bg-transparent border-none outline-none cursor-pointer flex-1 min-w-0"
+                    style={{ color: "var(--color-on-surface)", fontSize: "1rem", minHeight: 44 }}
                   >
                     {KIND_OPTIONS.map(({ value, label }) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
                   </select>
-                  <span className="ml-auto text-xs" style={{ color: "var(--color-outline)" }}>{idx + 1}</span>
-                  <button
-                    type="button"
-                    onClick={() => duplicateItem(idx)}
-                    aria-label="Dupliquer l'élément"
-                    style={{ color: "var(--color-outline)" }}
-                    className="transition-colors hover:text-white"
-                  >
-                    <Copy size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(idx)}
-                    aria-label="Supprimer l'élément"
-                    style={{ color: "var(--color-outline)" }}
-                    className="transition-colors hover:text-red-400"
-                  >
-                    <Trash2 size={13} />
+                  <button type="button" className="icon-btn icon-btn-danger" onClick={() => removeItem(idx)} aria-label={`Supprimer l'élément ${idx + 1}`}>
+                    <Trash2 size={18} aria-hidden="true" />
                   </button>
                 </div>
 
@@ -249,14 +233,14 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
                       {item.song ? (
                         <div
                           className="flex items-center justify-between px-3 py-2 rounded-md text-sm"
-                          style={{ background: "rgba(255,255,255,0.06)" }}
+                          style={{ background: "var(--color-surface-high)" }}
                         >
                           <span className="font-medium" style={{ color: "var(--color-on-surface)" }}>{item.song.title}</span>
                           <button
                             type="button"
                             onClick={() => { updateItem(idx, { songId: undefined, title: "", song: undefined }); setSearchingFor(idx) }}
-                            className="text-xs hover:underline"
-                            style={{ color: "var(--color-secondary)" }}
+                            className="font-bold hover:underline px-2"
+                            style={{ color: "var(--color-primary)", minHeight: 44 }}
                           >
                             Changer
                           </button>
@@ -318,10 +302,21 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
                     value={item.notes ?? ""}
                     onChange={(e) => updateItem(idx, { notes: e.target.value })}
                     placeholder="Notes (tonalité, intervenant, consigne…)"
-                    rows={1}
+                    rows={2}
                     maxLength={2000}
-                    className="input mt-2 text-xs"
+                    className="input mt-2"
                   />
+                  <div className="flex flex-wrap items-center gap-1 mt-2">
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => moveItem(idx, -1)} disabled={idx === 0}>
+                      <ChevronUp size={17} aria-hidden="true" /> Monter
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => moveItem(idx, 1)} disabled={idx === items.length - 1}>
+                      <ChevronDown size={17} aria-hidden="true" /> Descendre
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => duplicateItem(idx)}>
+                      <Copy size={16} aria-hidden="true" /> Dupliquer
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

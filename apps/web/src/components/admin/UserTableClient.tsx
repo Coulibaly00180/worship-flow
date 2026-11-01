@@ -106,141 +106,111 @@ export function UserTableClient({
   ]
 
   return (
-    <div className="page-container">
-      <div className="page-header flex items-start justify-between">
+    <div className="page-container" style={{ maxWidth: 900 }}>
+      <div className="page-header flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="eyebrow">Admin</p>
-          <h1 className="page-title">Gestion des Utilisateurs</h1>
-          <p className="page-subtitle">Gérez les accès et les rôles de votre équipe.</p>
+          <h1 className="page-title">Utilisateurs</h1>
+          <p className="page-subtitle">Gérez les accès et les rôles de l&apos;équipe.</p>
         </div>
         {creatableRoles.length > 0 && (
-          <button type="button" onClick={() => setShowNew(true)} className="btn btn-primary btn-sm mt-1">
-            <Plus size={15} strokeWidth={2.5} />
+          <button type="button" onClick={() => setShowNew(true)} className="btn btn-primary">
+            <Plus size={18} strokeWidth={2.5} aria-hidden="true" />
             Nouvel utilisateur
           </button>
         )}
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 mb-6 flex-wrap">
+      <div className="scroll-x mb-5" style={{ gap: 8 }} role="group" aria-label="Filtrer par rôle">
         {filters.map(({ value, label }) => (
           <button
             key={value}
             type="button"
             onClick={() => setFilter(value)}
-            className="px-3 py-1.5 text-xs font-semibold rounded-full transition-colors"
-            style={filter === value
-              ? { background: "var(--color-primary-deep)", color: "#fff", border: "1px solid transparent" }
-              : { background: "rgba(255,255,255,0.05)", color: "var(--color-on-surface-variant)", border: "1px solid var(--color-outline-variant)" }
-            }
+            className="chip"
+            data-active={filter === value}
+            aria-pressed={filter === value}
           >
             {label}
-            <span className="ml-1.5 opacity-60">
+            <span style={{ opacity: 0.7 }}>
               {value === "ALL" ? users.length : users.filter((u) => u.role === value).length}
             </span>
           </button>
         ))}
       </div>
 
-      {/* Table */}
-      <div className="card-flat overflow-hidden" style={{ padding: 0, borderRadius: "var(--radius-xl)" }}>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Membre</th>
-              <th className="hidden sm:table-cell">Contact</th>
-              <th>Rôle</th>
-              <th className="hidden md:table-cell">Statut</th>
-              <th className="text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((user) => {
-              const initials = user.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
-              const isSelf = user.id === currentUserId
+      <ul className="flex flex-col gap-3">
+        {filtered.map((user) => {
+          const initials = user.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+          const isSelf = user.id === currentUserId
 
-              return (
-                <tr key={user.id}>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center shrink-0"
-                        style={{ background: "linear-gradient(135deg, var(--color-primary-deep), var(--color-primary-dim))", color: "#fff" }}
-                      >
-                        {initials}
-                      </div>
-                      <div>
-                        <p className="font-medium leading-tight" style={{ color: "var(--color-on-surface)" }}>{user.name}</p>
-                        <p className="text-xs" style={{ color: "var(--color-on-surface-variant)" }}>@{user.username}</p>
-                      </div>
-                      {isSelf && (
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.07)", color: "var(--color-on-surface-variant)" }}>
-                          Vous
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="hidden sm:table-cell" style={{ color: "var(--color-on-surface-variant)" }}>{user.email}</td>
-                  <td>
-                    <span className={ROLE_BADGE[user.role] ?? "badge"}>
-                      {ROLE_LABELS[user.role] ?? user.role}
-                    </span>
-                  </td>
-                  <td className="hidden md:table-cell">
-                    <span
-                      className="flex items-center gap-1.5 text-xs font-medium w-fit"
-                      style={{ color: user.isActive ? "var(--color-mastered)" : "var(--color-on-surface-variant)" }}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: user.isActive ? "var(--color-mastered)" : "var(--color-outline)" }} />
-                      {user.isActive ? "Actif" : "Inactif"}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex items-center justify-end gap-1.5">
-                      {canToggleActive && (
-                        <button
-                          type="button"
-                          onClick={() => toggleActive(user)}
-                          disabled={isPending || isSelf}
-                          title={user.isActive ? "Désactiver" : "Activer"}
-                          className="w-7 h-7 rounded-md flex items-center justify-center transition-colors disabled:opacity-30"
-                          style={{ border: "1px solid var(--color-outline-variant)", color: "var(--color-on-surface-variant)" }}
-                        >
-                          {user.isActive ? <UserX size={13} /> : <UserCheck size={13} />}
-                        </button>
-                      )}
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={() => deleteUser(user)}
-                          disabled={isPending || isSelf}
-                          title="Supprimer"
-                          className="w-7 h-7 rounded-md flex items-center justify-center transition-colors disabled:opacity-30"
-                          style={{ border: "1px solid var(--color-outline-variant)", color: "var(--color-error)" }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
+          return (
+            <li key={user.id} className="card flex flex-wrap items-center gap-x-4 gap-y-3" style={{ padding: "14px 16px", opacity: user.isActive ? 1 : 0.75 }}>
+              <div
+                className="grid place-items-center rounded-full font-bold shrink-0"
+                style={{ width: 44, height: 44, background: "var(--color-primary-container)", color: "var(--color-on-primary-container)" }}
+                aria-hidden="true"
+              >
+                {initials}
+              </div>
 
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={5} className="text-center py-10 text-sm" style={{ color: "var(--color-on-surface-variant)" }}>
-                  Aucun utilisateur dans cette catégorie.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              <div className="flex-1 min-w-[160px]">
+                <p className="font-bold text-lg leading-tight" style={{ color: "var(--color-on-surface)" }}>
+                  {user.name}
+                  {isSelf && <span className="ml-2 text-sm font-semibold" style={{ color: "var(--color-on-surface-variant)" }}>(vous)</span>}
+                </p>
+                <p className="text-sm break-all" style={{ color: "var(--color-on-surface-variant)" }}>@{user.username} · {user.email}</p>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className={ROLE_BADGE[user.role] ?? "badge"}>{ROLE_LABELS[user.role] ?? user.role}</span>
+                  <span
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold"
+                    style={{ color: user.isActive ? "var(--color-mastered)" : "var(--color-on-surface-variant)" }}
+                  >
+                    {user.isActive ? <UserCheck size={15} aria-hidden="true" /> : <UserX size={15} aria-hidden="true" />}
+                    {user.isActive ? "Actif" : "Désactivé"}
+                  </span>
+                </div>
+              </div>
 
-        <div className="px-5 py-3 text-xs" style={{ borderTop: "1px solid var(--color-outline-variant)", color: "var(--color-on-surface-variant)" }}>
-          {filtered.length} / {users.length} utilisateur{users.length !== 1 ? "s" : ""}
-        </div>
-      </div>
+              <div className="flex items-center gap-1 ml-auto">
+                {canToggleActive && (
+                  <button
+                    type="button"
+                    onClick={() => toggleActive(user)}
+                    disabled={isPending || isSelf}
+                    className="icon-btn"
+                    aria-label={`${user.isActive ? "Désactiver" : "Activer"} ${user.name}`}
+                    title={isSelf ? "Vous ne pouvez pas modifier votre propre compte ici" : user.isActive ? "Désactiver" : "Activer"}
+                  >
+                    {user.isActive ? <UserX size={19} aria-hidden="true" /> : <UserCheck size={19} aria-hidden="true" />}
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => deleteUser(user)}
+                    disabled={isPending || isSelf}
+                    className="icon-btn icon-btn-danger"
+                    aria-label={`Supprimer ${user.name}`}
+                    title="Supprimer"
+                  >
+                    <Trash2 size={19} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            </li>
+          )
+        })}
+
+        {filtered.length === 0 && (
+          <li className="text-center py-10" style={{ color: "var(--color-on-surface-variant)" }}>
+            Aucun utilisateur dans cette catégorie.
+          </li>
+        )}
+      </ul>
+
+      <p className="mt-4 text-sm" style={{ color: "var(--color-on-surface-variant)" }} aria-live="polite">
+        {filtered.length} sur {users.length} utilisateur{users.length !== 1 ? "s" : ""}
+      </p>
 
       {showNew && (
         <NewUserDialog

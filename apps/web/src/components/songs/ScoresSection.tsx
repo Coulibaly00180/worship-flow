@@ -172,7 +172,7 @@ export function ScoresSection({
               aria-pressed={filter === v}
               className="px-3 py-1 text-xs font-semibold rounded-full transition-colors"
               style={{
-                background: filter === v ? "var(--color-primary)" : "rgba(255,255,255,0.08)",
+                background: filter === v ? "var(--color-primary)" : "var(--color-surface-high)",
                 color: filter === v ? "var(--color-bg)" : "var(--color-on-surface-variant)",
               }}
             >
@@ -214,7 +214,7 @@ export function ScoresSection({
           <p className="text-xs font-semibold mb-1" style={{ color: "var(--color-on-surface-variant)" }}>Aperçu</p>
           <AbcScore abc={draft.abc} onWarnings={setWarnings} />
           {warnings.length > 0 && (
-            <ul className="mt-2 text-xs" role="status" style={{ color: "#f0b429" }}>
+            <ul className="mt-2 text-xs" role="status" style={{ color: "var(--color-secondary)" }}>
               {warnings.slice(0, 5).map((w, i) => (<li key={i}>⚠ {w}</li>))}
             </ul>
           )}
@@ -247,7 +247,7 @@ export function ScoresSection({
                 >
                   {s.filename}
                 </button>
-                <span className="text-xs shrink-0 px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)", color: "var(--color-on-surface-variant)" }}>
+                <span className="text-xs shrink-0 px-2 py-0.5 rounded-full" style={{ background: "var(--color-surface-high)", color: "var(--color-on-surface-variant)" }}>
                   {voiceLabel(s.voice)}
                 </span>
                 <span className="text-xs shrink-0 hidden sm:inline" style={{ color: "var(--color-on-surface-variant)" }}>
@@ -274,7 +274,7 @@ export function ScoresSection({
                     type="button"
                     onClick={() => remove(s.id)}
                     aria-label={`Supprimer ${s.filename}`}
-                    className="transition-colors hover:text-red-400"
+                    className="transition-colors hover:text-[var(--color-error)]"
                     style={{ color: "var(--color-outline)" }}
                   >
                     <Trash2 size={14} />
