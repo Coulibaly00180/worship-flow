@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { canChangeUserRole, canDeleteUser, canAccessUserAdmin } from "@/lib/roles"
+import { canChangeUserRole, canDeleteUser, canAccessUserAdmin, canManageTarget } from "@/lib/roles"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -32,7 +32,21 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, error: "Accès refusé" }, { status: 403 })
   }
 
-  const body = await req.json()
+  // Un gestionnaire ne peut pas modifier un compte de rang supérieur ou égal au sien
+  if (!isSelf) {
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+    if (!target) return NextResponse.json({ ok: false, error: "Utilisateur introuvable" }, { status: 404 })
+    if (!canManageTarget(session.user.role, target.role)) {
+      return NextResponse.json({ ok: false, error: "Accès refusé" }, { status: 403 })
+    }
+  }
+
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ ok: false, error: "JSON invalide" }, { status: 400 })
+  }
   const parsed = UpdateUserSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: parsed.error.errors[0].message }, { status: 400 })
@@ -41,6 +55,11 @@ export async function PATCH(req: Request, { params }: Params) {
   const { password, role, isActive, username, firstName, lastName, ...rest } = parsed.data
 
   const data: Record<string, unknown> = { ...rest }
+
+  // email / name libre : soi-même ou ADMIN (évite le détournement d'un compte par un gestionnaire)
+  if ((rest.email !== undefined || rest.name !== undefined) && !isSelf && !isAdmin) {
+    return NextResponse.json({ ok: false, error: "Accès refusé" }, { status: 403 })
+  }
 
   // username : seulement soi-même
   if (username !== undefined) {
@@ -76,6 +95,10 @@ export async function PATCH(req: Request, { params }: Params) {
     data.isActive = isActive
   }
 
+  // Mot de passe : soi-même ou ADMIN uniquement (jamais un gestionnaire sur un autre compte)
+  if (password && !isSelf && !isAdmin) {
+    return NextResponse.json({ ok: false, error: "Seul un administrateur peut réinitialiser le mot de passe d'un autre utilisateur" }, { status: 403 })
+  }
   if (password) data.passwordHash = await bcrypt.hash(password, 12)
 
   const user = await prisma.user.update({

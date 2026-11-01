@@ -86,3 +86,12 @@ export function canChangeUserRole(role: string): boolean {
 export function canDeleteUser(role: string): boolean {
   return atLeast(role, "ADMIN")
 }
+
+/**
+ * Un utilisateur ne peut agir sur un autre compte que si son rang est
+ * strictement supérieur, sauf ADMIN qui peut agir sur tous les comptes.
+ */
+export function canManageTarget(actorRole: string, targetRole: string): boolean {
+  if (actorRole === "ADMIN") return true
+  return level(actorRole) > level(targetRole)
+}

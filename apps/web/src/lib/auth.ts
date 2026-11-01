@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials"
 import { compare } from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nextAuth = NextAuth({
   providers: [
     Credentials({
       credentials: {
@@ -69,12 +69,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (token.id) {
           const fresh = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { username: true, firstName: true, lastName: true, name: true, isActive: true },
+            select: { username: true, firstName: true, lastName: true, name: true, isActive: true, role: true },
           })
           if (!fresh || !fresh.isActive) {
-            // Compte désactivé — forcer déconnexion au prochain accès
-            return { ...session, user: { ...session.user, id: "" } }
+            // Compte désactivé ou supprimé — session invalidée (auth() renverra null)
+            return { ...session, user: { ...session.user, id: "", role: "" } }
           }
+          // Le rôle est relu en base : une rétrogradation s'applique immédiatement
+          session.user.role = fresh.role
           session.user.username = fresh.username
           session.user.firstName = fresh.firstName
           session.user.lastName = fresh.lastName
@@ -91,3 +93,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: "jwt",
   },
 })
+
+export const { handlers, signIn, signOut } = nextAuth
+
+/**
+ * Retourne la session uniquement si le compte existe et est actif.
+ * Un compte désactivé/supprimé (id vidé par le callback session) donne null,
+ * ce qui déclenche les 401 des routes API et les redirections des pages.
+ */
+export async function auth() {
+  const session = await nextAuth.auth()
+  if (!session?.user?.id) return null
+  return session
+}
