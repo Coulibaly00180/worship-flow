@@ -1,0 +1,12 @@
+Sons de l'écoute des partitions (public/soundfonts/FluidR3_GM)
+================================================================
+
+Instruments « acoustic_grand_piano » et « choir_aahs » extraits de la banque de sons FluidR3_GM
+(Frank Wen), convertis en fichiers MP3 par note par le projet midi-js-soundfonts (Benjamin Gleitzman,
+https://github.com/gleitz/midi-js-soundfonts).
+
+Licence : Creative Commons Attribution 3.0 (CC BY 3.0)
+https://creativecommons.org/licenses/by/3.0/
+
+Vous pouvez copier, redistribuer et adapter ces sons, y compris commercialement, à condition de
+mentionner leur origine (cette notice et la mention affichée dans l'application, page Profil).

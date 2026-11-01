@@ -4,7 +4,7 @@ Stratégie de test, configuration et patterns pour l'app Next.js.
 
 ---
 
-> **État actuel.** Vitest 4 ; 22 fichiers de tests, 261 tests (routes API chants/plans/utilisateurs/partitions, rôles, validations, parseur de chants, limiteur de connexion, contraste des accents, réglages d'apparence et leur synchronisation, compilateur de partitions YAML). Lancer : `npm run test` à la racine. Les tests mockent `@/lib/auth` et `@/lib/prisma` (pas de base requise).
+> **État actuel.** Vitest 4 ; 25 fichiers de tests, 319 tests (routes API chants/plans/utilisateurs/partitions, rôles, validations, parseur de chants, limiteur de connexion, contraste des accents, réglages d'apparence et leur synchronisation, compilateur de partitions YAML). Lancer : `npm run test` à la racine. Les tests mockent `@/lib/auth` et `@/lib/prisma` (pas de base requise).
 
 ## Stack de test
 

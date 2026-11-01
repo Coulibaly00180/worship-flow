@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Sun, Moon, Play, Pause, AlignJustify, Layers, Music, Minus, Plus } from "lucide-react"
-import { AbcScore } from "@/components/songs/AbcScore"
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Sun, Moon, Play, Pause, AlignJustify, Layers, Music } from "lucide-react"
+import { ScoreViewer } from "@/components/songs/ScoreViewer"
 import { useReadPrefs } from "@/lib/readPrefs"
 import { VOICE_LABEL, type Voice } from "@/lib/scoreFile"
 
@@ -59,7 +59,6 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
   const [current, setCurrent] = useState(0)
   const [tab, setTab] = useState<Tab>("lyrics")
   const [playing, setPlaying] = useState(false)
-  const [transpose, setTranspose] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const total = song.blocks.length
@@ -157,8 +156,7 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
               onChange={(e) => {
                 const s = scores.find((x) => x.id === e.target.value)
                 setPickedId(e.target.value)
-                if (s) setPrefs({ voice: s.voice })
-                setTranspose(0)
+                if (s && s.voice !== "ALL") setPrefs({ voice: s.voice }) // « toutes voix » ne remplace pas ma voix
               }}
               className={`rounded-md px-2 py-1 ${light ? "bg-black/10 text-black" : "bg-white/10 text-white"}`}
             >
@@ -166,17 +164,9 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
                 <option key={s.id} value={s.id} className="text-black">{s.filename} — {VOICE_LABEL[s.voice as Voice] ?? s.voice}</option>
               ))}
             </select>
-            {score.kind !== "FILE" && (
-              <span className="flex items-center gap-1">
-                <span className={muted}>Transposition</span>
-                <button type="button" aria-label="Baisser d'un demi-ton" onClick={() => setTranspose((t) => Math.max(-12, t - 1))} className={`w-7 h-7 rounded-md flex items-center justify-center ${btn}`}><Minus size={12} /></button>
-                <span className="w-8 text-center font-semibold" aria-live="polite">{transpose > 0 ? `+${transpose}` : transpose}</span>
-                <button type="button" aria-label="Monter d'un demi-ton" onClick={() => setTranspose((t) => Math.min(12, t + 1))} className={`w-7 h-7 rounded-md flex items-center justify-center ${btn}`}><Plus size={12} /></button>
-              </span>
-            )}
           </div>
           {score.kind !== "FILE" ? (
-            <AbcScore abc={score.abc ?? ""} transpose={transpose} />
+            <ScoreViewer key={score.id} abc={score.abc ?? ""} tone={light ? "light" : "dark"} preferredVoice={prefs.voice} onPreferredVoice={(k) => setPrefs({ voice: k })} />
           ) : score.mimeType === "application/pdf" ? (
             <iframe title={score.filename} src={`/api/songs/${song.id}/scores/${score.id}`} className="w-full bg-white rounded-md" style={{ height: "calc(100vh - 150px)" }} />
           ) : (

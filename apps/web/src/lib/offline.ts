@@ -1,7 +1,10 @@
 /** Cache alimenté à la demande (bouton « Disponible hors-ligne »), lu par le service worker. */
 export const OFFLINE_CACHE = "cp-offline"
 /** Doit rester identique à STATIC_CACHE dans public/sw.js (scripts et styles des pages enregistrées). */
-export const STATIC_CACHE = "cp-static-v1"
+export const STATIC_CACHE = "cp-static-v2"
+
+/** Sons (chœur, piano) hébergés avec l'application : abcjs y charge une note par fichier. */
+export const SOUNDFONT_URL = "/soundfonts/FluidR3_GM/"
 
 export function offlineSupported(): boolean {
   return typeof window !== "undefined" && "caches" in window
@@ -49,6 +52,20 @@ async function cacheStatic(url: string): Promise<void> {
   } catch {
     // un fichier statique manquant n'empêche pas d'enregistrer le reste
   }
+}
+
+/** Notes mises en cache pour l'écoute hors-ligne : do 3 → do 6 (la tessiture d'un chœur), instrument « voix ». */
+const WARM_NOTES = (() => {
+  const names = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
+  const out: string[] = []
+  for (let o = 3; o <= 5; o++) for (const n of names) out.push(`${n}${o}`)
+  out.push("C6")
+  return out
+})()
+
+/** Précharge les sons du chœur pour pouvoir écouter une partition sans réseau. */
+export async function warmSoundfont(): Promise<void> {
+  for (const note of WARM_NOTES) await cacheStatic(`${SOUNDFONT_URL}choir_aahs-mp3/${note}.mp3`)
 }
 
 /** Vide les caches contenant des données utilisateur (à appeler avant la déconnexion). */

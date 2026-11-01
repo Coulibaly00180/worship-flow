@@ -64,9 +64,23 @@ dans l'éditeur (« Charger un exemple complet »).
 (`Sol7`) après chaque rendu. Ils suivent donc la transposition (Sol → La à +2).
 
 **Tessiture** : `do` est le do central (convention d'écriture, pas de transposition automatique entre voix). Pour éviter les erreurs d'octave,
-chaque voix reconnue (Soprano, Alto, Ténor, Basse) est contrôlée sur une tessiture usuelle avec marge (soprano 57-84, alto 52-79, ténor 57-83 écrit en clé de sol 8vb,
-basse 36-67, hauteurs MIDI ; toute autre voix : 28-91). Une note hors tessiture donne un **avertissement non bloquant** qui propose le bon décalage
-(« Voix « Basse » : « do'' » (et 2 autres) semble trop aigu pour une voix de basse… `octave: -1` sous la voix décale toutes ses notes »).
+chaque voix est contrôlée sur une tessiture usuelle avec marge (hauteurs MIDI écrites) :
+
+| Voix reconnue par son nom | Plage | Clé de lecture |
+|---------------------------|-------|----------------|
+| Soprano / Dessus | 57-84 | sol |
+| Mezzo | 55-81 | sol |
+| Alto / Contralto | 52-79 | sol |
+| Femmes / Dames | 52-84 | sol |
+| Enfants | 60-84 | sol |
+| Ténor | 57-83 | sol 8vb |
+| Hommes / Messieurs | 52-83 | sol 8vb |
+| Baryton | 40-70 | fa |
+| Basse | 36-67 | fa |
+
+Un nom libre (« Pupitre A ») est contrôlé sur la tessiture humaine générale (28-91). Pour choisir le contrôle (et la clé) quelle que soit le nom :
+`tessiture: basse` sous la voix, ou à la racine pour toutes les voix ; `tessiture: libre` désactive le contrôle. Une note hors tessiture donne un
+**avertissement non bloquant** qui propose le décalage (« Voix « Basse » : « do'' » (et 2 autres) semble trop aigu pour une voix de basse… `octave: -1` sous la voix décale toutes ses notes »).
 
 **Mise en page** : les portées sont recoupées à la largeur disponible et recalculées si elle change (rotation du téléphone, redimensionnement).
 Sur téléphone la mise en page est calculée sur une largeur logique de 460 px (~2 mesures par ligne) puis réduite à l'écran ; sur grand écran elle suit
@@ -97,7 +111,23 @@ w: la la la la la
 Plusieurs voix : une ligne `V:1` / `V:2` par voix. Les paroles se saisissent sous la portée avec `w:`.
 La transposition (−12 à +12 demi-tons) est visuelle : elle ne modifie pas le texte enregistré.
 
-Limites : pas d'accords de guitare en tablature, pas de lecture audio (il faudrait héberger une banque de sons, ~1-2 Mo, et ouvrir la CSP) ; pas de saisie à la souris.
+## Voix, écoute et accords de guitare
+Sous une partition écrite (YAML ou ABC avec voix déclarées) la visionneuse propose :
+
+- **Choix des voix** : une pastille par voix (Soprano, Alto…). Ne garder que sa voix rend la partition **environ 4 fois moins haute** sur téléphone
+  (mesuré : 778 px → 316 px pour 4 voix). Au moins une voix reste toujours affichée. En mode lecture, la voix préférée (celle choisie en dernier,
+  mémorisée sur l'appareil) est affichée d'emblée. Le filtrage (`src/lib/abcVoices.ts`) s'applique à l'ABC compilé ; les ABC écrits à la main avec des
+  voix en ligne (`[V:1]`) ne sont pas filtrables.
+- **Écoute** : bouton Écouter / Pause / Arrêter, instrument « voix aah » ou piano, tempo de 50 à 130 %, notes qui s'allument pendant la lecture. Elle joue
+  ce qui est affiché (une seule voix = on entend sa voix seule), à la hauteur transposée.
+  Les sons (banque FluidR3 GM, **CC BY 3.0**, voir `public/soundfonts/LICENSE.txt` et la mention de la page Profil) sont **hébergés avec l'application**
+  (`public/soundfonts/FluidR3_GM`, 2 instruments × 88 notes, ~4,5 Mo) : aucun appel externe, compatible avec la politique de sécurité. Le service worker les garde
+  en cache d'abord ; « Disponible hors-ligne » précharge le chœur de do 3 à do 6. Vérifié avec le serveur arrêté.
+- **Diagrammes de guitare** : sous la partition, « Diagrammes d'accords pour la guitare » dessine chaque accord utilisé (accordage standard), à la hauteur
+  transposée. Accords à vide usuels, sinon forme avec barré la plus basse sur le manche (formes de mi et de la). Qualités gérées : majeur, m, 7, m7, maj7, sus2, sus4,
+  6, add9, dim, aug ; l'accord principal est montré pour une basse (`C/E`). Un accord non géré (`m7b5`, `9`…) est listé sans diagramme plutôt qu'avec un faux doigté.
+
+Limites : pas de tablature de guitare ; l'audio ne rend pas les nuances (volume constant) ; pas de saisie à la souris.
 
 ## Recherche
 `GET /api/songs?q=…` et la page Bibliothèque cherchent dans le titre, l'artiste, les étiquettes et les **paroles**, sans tenir compte des

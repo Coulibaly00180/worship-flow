@@ -5,7 +5,7 @@
 ## Fonctionnalités
 
 - **Bibliothèque de chants** — couplets, refrains, ponts ; recherche par titre, artiste ou paroles ; import en masse (DOCX / texte).
-- **Partitions** — PDF/PNG/JPEG (8 Mo max) **ou écrites dans l'application en solfège (YAML) ou en notation ABC** (aperçu en direct, transposition), classées par voix (soprano, alto, ténor, basse, accompagnement).
+- **Partitions** — PDF/PNG/JPEG (8 Mo max) **ou écrites dans l'application en solfège (YAML) ou en notation ABC** (aperçu en direct, transposition, **écoute**, choix de sa voix, diagrammes d'accords de guitare), classées par voix (soprano, alto, ténor, basse, accompagnement).
 - **Mode lecture scène** — blocs ou texte défilant automatique, taille réglable, thème clair/sombre, écran maintenu allumé, clavier, partition de sa voix.
 - **Recherche** — titre, artiste, étiquettes et paroles, sans tenir compte des accents ; filtres favoris, statut, partition.
 - **Hors-ligne (PWA)** — installable sur téléphone ; bouton « Disponible hors-ligne » sur un chant ou un plan (HTTPS requis).

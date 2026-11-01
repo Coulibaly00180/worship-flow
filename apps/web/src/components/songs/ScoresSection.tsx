@@ -3,8 +3,9 @@
 import { useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { FileText, Image as ImageIcon, Music, Trash2, Upload, ExternalLink, Pencil, Plus, Minus, AlertCircle, HelpCircle } from "lucide-react"
+import { FileText, Image as ImageIcon, Music, Trash2, Upload, ExternalLink, Pencil, AlertCircle, HelpCircle } from "lucide-react"
 import { AbcScore } from "@/components/songs/AbcScore"
+import { ScoreViewer } from "@/components/songs/ScoreViewer"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { ABC_TEMPLATE, VOICES, VOICE_LABEL, type Voice } from "@/lib/scoreFile"
 import { YAML_EXAMPLE_FULL, YAML_TEMPLATE, compileYamlScore } from "@/lib/scoreYaml"
@@ -44,7 +45,6 @@ export function ScoresSection({
   const [openId, setOpenId] = useState<string | null>(null)
   const [uploadVoice, setUploadVoice] = useState<Voice>("ALL")
   const [filter, setFilter] = useState<string>("ALL_VOICES")
-  const [transpose, setTranspose] = useState(0)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
   const [confirmId, setConfirmId] = useState<string | null>(null)
@@ -349,7 +349,7 @@ export function ScoresSection({
                 <Icon size={19} style={{ color: "var(--color-primary)" }} aria-hidden="true" />
                 <button
                   type="button"
-                  onClick={() => { setOpenId(openId === s.id ? null : s.id); setTranspose(0) }}
+                  onClick={() => setOpenId(openId === s.id ? null : s.id)}
                   aria-expanded={openId === s.id}
                   className="flex-1 min-w-0 text-left font-semibold truncate hover:underline"
                   style={{ color: "var(--color-on-surface)", minHeight: 48 }}
@@ -382,22 +382,7 @@ export function ScoresSection({
       {opened && (
         <div className="mt-4">
           {isWritten(opened.kind) ? (
-            <>
-              <div className="flex items-center gap-2 mb-2" style={{ color: "var(--color-on-surface-variant)" }}>
-                <span className="font-semibold">Transposition</span>
-                <button type="button" className="btn btn-secondary btn-sm" aria-label="Baisser d'un demi-ton" onClick={() => setTranspose((t) => Math.max(-12, t - 1))}>
-                  <Minus size={14} aria-hidden="true" />
-                </button>
-                <span className="w-10 text-center font-bold" aria-live="polite">{transpose > 0 ? `+${transpose}` : transpose}</span>
-                <button type="button" className="btn btn-secondary btn-sm" aria-label="Monter d'un demi-ton" onClick={() => setTranspose((t) => Math.min(12, t + 1))}>
-                  <Plus size={14} aria-hidden="true" />
-                </button>
-                {transpose !== 0 && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setTranspose(0)}>Réinitialiser</button>
-                )}
-              </div>
-              <AbcScore abc={opened.abc ?? ""} transpose={transpose} />
-            </>
+            <ScoreViewer key={opened.id} abc={opened.abc ?? ""} />
           ) : opened.mimeType === "application/pdf" ? (
             <iframe
               title={opened.filename}

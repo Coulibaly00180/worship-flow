@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { CloudDownload, Check } from "lucide-react"
-import { cacheForOffline, offlineSupported } from "@/lib/offline"
+import { cacheForOffline, offlineSupported, warmSoundfont } from "@/lib/offline"
 
 /** Enregistre sur l'appareil les pages et partitions listées pour les consulter sans réseau. */
 export function OfflineButton({
@@ -21,7 +21,10 @@ export function OfflineButton({
   async function run() {
     if (!offlineSupported()) return toast.error("Ce navigateur ne permet pas l'enregistrement hors-ligne")
     setState("busy")
-    if (withAbc) await import("abcjs").catch(() => undefined)
+    if (withAbc) {
+      await import("abcjs").catch(() => undefined)
+      await warmSoundfont().catch(() => undefined) // sons du chœur pour écouter sans réseau
+    }
     const { saved, failed } = await cacheForOffline(urls)
     if (failed.length === 0) {
       setState("done")

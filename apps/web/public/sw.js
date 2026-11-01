@@ -9,7 +9,7 @@
  * (message CLEAR_CACHES envoyé par l'application) et peuvent être alimentés explicitement
  * (bouton « Disponible hors-ligne », cache `cp-offline`).
  */
-const VERSION = "v1"
+const VERSION = "v2"
 const STATIC_CACHE = `cp-static-${VERSION}`
 const PAGES_CACHE = `cp-pages-${VERSION}`
 const DATA_CACHE = `cp-data-${VERSION}`
@@ -46,7 +46,12 @@ self.addEventListener("message", (event) => {
 const NEVER_CACHE = [/^\/api\/auth(\/|$)/, /^\/api\/users(\/|$)/, /^\/api\/health$/, /^\/login(\/|$)/]
 
 function isStatic(url) {
-  return url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname === "/manifest.webmanifest"
+  return (
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/icons/") ||
+    url.pathname.startsWith("/soundfonts/") ||
+    url.pathname === "/manifest.webmanifest"
+  )
 }
 
 function isCacheableData(url) {

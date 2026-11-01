@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import type { TuneObject } from "abcjs"
 import { chordToFrench } from "@/lib/chords"
 
 type Props = {
@@ -9,6 +10,8 @@ type Props = {
   transpose?: number
   /** Appelé après chaque rendu avec les avertissements de syntaxe (texte brut). */
   onWarnings?: (warnings: string[]) => void
+  /** Appelé après chaque rendu avec la partition analysée (pour la lecture audio) et les accords (noms anglais, transposés). */
+  onRendered?: (info: { visualObj: TuneObject | undefined; chords: string[] }) => void
   className?: string
 }
 
@@ -35,15 +38,17 @@ function frenchChords(root: HTMLElement) {
  * Les portées sont recoupées à la largeur disponible (téléphone comme grand écran) et recalculées si elle change.
  * Le rendu est fait côté client, donc disponible hors-ligne une fois la page en cache.
  */
-export function AbcScore({ abc, transpose = 0, onWarnings, className }: Props) {
+export function AbcScore({ abc, transpose = 0, onWarnings, onRendered, className }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [failed, setFailed] = useState(false)
   const [width, setWidth] = useState(0)
   const warningsRef = useRef(onWarnings)
+  const renderedRef = useRef(onRendered)
 
   useEffect(() => {
     warningsRef.current = onWarnings
-  }, [onWarnings])
+    renderedRef.current = onRendered
+  }, [onWarnings, onRendered])
 
   // Largeur disponible, arrondie par pas de 24 px pour ne pas recalculer à chaque pixel
   useEffect(() => {
@@ -82,7 +87,10 @@ export function AbcScore({ abc, transpose = 0, onWarnings, className }: Props) {
           paddingleft: 0,
           paddingright: 0,
         })
+        // Accords en noms anglais (déjà transposés par abcjs), à relever AVANT le passage en français
+        const chords = [...new Set(Array.from(el.querySelectorAll(".abcjs-chord")).map((c) => (c.textContent ?? "").trim()).filter(Boolean))]
         frenchChords(el)
+        renderedRef.current?.({ visualObj: tunes?.[0], chords })
         const warnings = (tunes?.[0]?.warnings ?? []).map(stripTags).filter(Boolean)
         warningsRef.current?.(warnings)
       })

@@ -710,6 +710,13 @@
   scroll-behavior: auto !important;
 }
 
+/* ── Lecture audio : note en cours (sur fond blanc de la partition, quel que soit le thème) ── */
+.cp-playing,
+.cp-playing * {
+  fill: #1d4ed8 !important;
+  stroke: #1d4ed8 !important;
+}
+
 /* ── Mouvement réduit ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

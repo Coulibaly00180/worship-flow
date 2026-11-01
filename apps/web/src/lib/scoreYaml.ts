@@ -55,26 +55,33 @@ voix:
 `
 
 const SOLFEGE: Record<string, string> = { do: "C", re: "D", mi: "E", fa: "F", sol: "G", la: "A", si: "B" }
-const KNOWN_ROOT = new Set(["titre", "compositeur", "tonalite", "mesure", "tempo", "unite", "voix", "notes", "paroles", "nom", "cle", "octave"])
-const KNOWN_VOICE = new Set(["nom", "notes", "paroles", "cle", "octave"])
+const KNOWN_ROOT = new Set(["titre", "compositeur", "tonalite", "mesure", "tempo", "unite", "voix", "notes", "paroles", "nom", "cle", "octave", "tessiture"])
+const KNOWN_VOICE = new Set(["nom", "notes", "paroles", "cle", "octave", "tessiture"])
 
 /** Clé de lecture proposée selon le nom de la voix (modifiable avec `cle:`). */
 const CLEFS: [RegExp, string][] = [
-  [/basse|bass/i, "bass"],
-  [/t[ée]nor/i, "treble-8"],
-  [/alto|contralto/i, "treble"],
-  [/soprano|dessus/i, "treble"],
+  [/basse|bass|baryton/i, "bass"],
+  [/t[ée]nor|hommes|messieurs|\bmen\b/i, "treble-8"],
+  [/alto|contralto|mezzo/i, "treble"],
+  [/soprano|dessus|femmes|dames|enfants|women/i, "treble"],
 ]
 const VALID_CLEFS = ["treble", "treble-8", "treble+8", "bass", "alto", "tenor", "perc", "none"]
 
 /** Tessitures usuelles (hauteurs MIDI écrites, marge comprise) : au-delà, on avertit sans bloquer. */
-type Range = { re: RegExp; label: string; min: number; max: number }
+type Range = { re: RegExp; key: string; label: string; min: number; max: number }
 const RANGES: Range[] = [
-  { re: /soprano|dessus/i, label: "soprano", min: 57, max: 84 },
-  { re: /alto|contralto/i, label: "alto", min: 52, max: 79 },
-  { re: /t[ée]nor/i, label: "ténor", min: 57, max: 83 },
-  { re: /basse|bass/i, label: "basse", min: 36, max: 67 },
+  { re: /soprano|dessus/i, key: "soprano", label: "soprano", min: 57, max: 84 },
+  { re: /mezzo/i, key: "mezzo", label: "mezzo-soprano", min: 55, max: 81 },
+  { re: /alto|contralto/i, key: "alto", label: "alto", min: 52, max: 79 },
+  { re: /femmes|dames|women/i, key: "femmes", label: "voix de femmes", min: 52, max: 84 },
+  { re: /enfants/i, key: "enfants", label: "voix d'enfants", min: 60, max: 84 },
+  { re: /t[ée]nor/i, key: "tenor", label: "ténor", min: 57, max: 83 },
+  { re: /hommes|messieurs|\bmen\b/i, key: "hommes", label: "voix d'hommes", min: 52, max: 83 },
+  { re: /baryton/i, key: "baryton", label: "baryton", min: 40, max: 70 },
+  { re: /basse|bass/i, key: "basse", label: "basse", min: 36, max: 67 },
 ]
+/** Valeurs acceptées par « tessiture: » (« libre » désactive le contrôle). */
+const RANGE_KEYS = [...RANGES.map((r) => r.key), "libre"]
 const HUMAN_RANGE = { min: 28, max: 91 }
 const SEMITONE: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
 const ACC_VALUE: Record<string, number> = { "#": 1, "♯": 1, "##": 2, b: -1, "♭": -1, bb: -2, "=": 0, "": 0 }
@@ -173,7 +180,7 @@ function tokenize(line: string): string[] {
   return out
 }
 
-type LineCtx = { voice: string; shift: number; errors: string[]; range: Range | null; outOfRange: { token: string; high: boolean }[] }
+type LineCtx = { voice: string; shift: number; errors: string[]; range: Range | null; unchecked: boolean; outOfRange: { token: string; high: boolean }[] }
 
 function convertLine(line: string, ctx: LineCtx): string {
   const result: string[] = []
@@ -209,7 +216,7 @@ function convertLine(line: string, ctx: LineCtx): string {
     }
     const midi = midiOf(note)
     const limits = ctx.range ?? HUMAN_RANGE
-    if (midi < limits.min || midi > limits.max) ctx.outOfRange.push({ token: tok, high: midi > limits.max })
+    if (!ctx.unchecked && (midi < limits.min || midi > limits.max)) ctx.outOfRange.push({ token: tok, high: midi > limits.max })
     result.push(prefix + renderNote(note))
     prefix = ""
   }
@@ -238,7 +245,7 @@ function asText(v: unknown): string | undefined {
   return undefined
 }
 
-type VoiceDef = { nom: string; notes: string; paroles: string[]; cle?: string; octave: number }
+type VoiceDef = { nom: string; notes: string; paroles: string[]; cle?: string; octave: number; tessiture?: string }
 
 function lyricsList(v: unknown): string[] {
   if (v === undefined || v === null) return []
@@ -282,7 +289,7 @@ export function compileYamlScore(source: string): CompileResult {
   }
   const r = root as Record<string, unknown>
   for (const k of Object.keys(r)) {
-    if (!KNOWN_ROOT.has(k)) warnings.push(`Clé inconnue « ${k} » ignorée (clés connues : titre, compositeur, tonalite, mesure, tempo, unite, octave, voix).`)
+    if (!KNOWN_ROOT.has(k)) warnings.push(`Clé inconnue « ${k} » ignorée (clés connues : titre, compositeur, tonalite, mesure, tempo, unite, octave, tessiture, voix).`)
   }
 
   // --- en-tête
@@ -321,7 +328,16 @@ export function compileYamlScore(source: string): CompileResult {
     if (!notes || !notes.trim()) { errors.push(`${who(nom)} : « notes » est vide ou manquant.`); return }
     const oct = parseOctave(v.octave)
     if (oct === null) { errors.push(`${who(nom)} : « octave » doit être un entier entre -3 et 3.`); return }
-    voices.push({ nom, notes, paroles: lyricsList(v.paroles), cle: asText(v.cle)?.trim(), octave: oct ?? globalOctave ?? 0 })
+    const rawRange = asText(v.tessiture) ?? asText(r.tessiture)
+    let tessiture: string | undefined
+    if (rawRange !== undefined) {
+      tessiture = strip(rawRange).trim().toLowerCase()
+      if (!RANGE_KEYS.includes(tessiture)) {
+        errors.push(`${who(nom)} : tessiture « ${rawRange} » inconnue (valeurs : ${RANGE_KEYS.join(", ")}).`)
+        return
+      }
+    }
+    voices.push({ nom, notes, paroles: lyricsList(v.paroles), cle: asText(v.cle)?.trim(), octave: oct ?? globalOctave ?? 0, tessiture })
   }
 
   if (Array.isArray(rawVoices)) {
@@ -352,7 +368,8 @@ export function compileYamlScore(source: string): CompileResult {
       voice: v.nom,
       shift: v.octave,
       errors,
-      range: RANGES.find((x) => x.re.test(v.nom)) ?? null,
+      range: v.tessiture ? (RANGES.find((x) => x.key === v.tessiture) ?? null) : (RANGES.find((x) => x.re.test(v.nom)) ?? null),
+      unchecked: v.tessiture === "libre",
       outOfRange: [],
     }
     const noteLines = v.notes.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
@@ -394,7 +411,7 @@ export function compileYamlScore(source: string): CompileResult {
   head.push(`M:${mesure}`, `L:${unite}`)
   if (tempo !== null) head.push(`Q:${unite}=${tempo}`)
 
-  const clefOf = (v: VoiceDef) => v.cle ?? CLEFS.find(([re]) => re.test(v.nom))?.[1] ?? "treble"
+  const clefOf = (v: VoiceDef) => v.cle ?? CLEFS.find(([re]) => re.test(v.nom))?.[1] ?? (v.tessiture ? CLEFS.find(([re]) => re.test(v.tessiture!))?.[1] : undefined) ?? "treble"
   const out = [...head]
   if (voices.length > 1) {
     out.push(`%%score ${voices.map((_, i) => i + 1).join(" ")}`)

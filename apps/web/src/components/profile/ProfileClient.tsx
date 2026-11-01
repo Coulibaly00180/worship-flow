@@ -133,6 +133,14 @@ export function ProfileClient({
             </Link>
           )}
 
+          <p className="text-sm" style={{ color: "var(--color-on-surface-variant)" }}>
+            Crédits : sons de l&apos;écoute des partitions (chœur, piano) issus de la banque{" "}
+            <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--color-primary)" }}>
+              FluidR3 GM (CC BY 3.0)
+            </a>
+            , via midi-js-soundfonts.
+          </p>
+
           <button
             type="button"
             className="btn btn-secondary w-full"
