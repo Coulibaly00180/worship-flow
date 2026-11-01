@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { canEditSongs } from "@/lib/roles"
+import { MAX_ABC_CHARS, VOICES } from "@/lib/scoreFile"
 
 type Params = { params: Promise<{ id: string; scoreId: string }> }
+
+const PatchSchema = z.object({
+  title: z.string().trim().min(1).max(120).optional(),
+  voice: z.enum(VOICES).optional(),
+  position: z.number().int().min(0).max(1000).optional(),
+  abc: z.string().min(1).max(MAX_ABC_CHARS).optional(),
+})
 
 export async function GET(_req: Request, { params }: Params) {
   const session = await auth()
@@ -12,6 +21,16 @@ export async function GET(_req: Request, { params }: Params) {
   const { id, scoreId } = await params
   const score = await prisma.songScore.findFirst({ where: { id: scoreId, songId: id } })
   if (!score) return NextResponse.json({ ok: false, error: "Partition introuvable" }, { status: 404 })
+
+  if (score.kind === "ABC" || !score.data) {
+    return new Response(score.abc ?? "", {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "private, no-cache",
+      },
+    })
+  }
 
   return new Response(new Uint8Array(score.data), {
     headers: {
@@ -22,6 +41,47 @@ export async function GET(_req: Request, { params }: Params) {
       "Cache-Control": "private, max-age=3600",
     },
   })
+}
+
+/** Modifie le titre, la voix, l'ordre ou (partitions ABC uniquement) le contenu. */
+export async function PATCH(req: Request, { params }: Params) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ ok: false, error: "Non authentifié" }, { status: 401 })
+  if (!canEditSongs(session.user.role)) {
+    return NextResponse.json({ ok: false, error: "Accès refusé — rôle insuffisant" }, { status: 403 })
+  }
+
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ ok: false, error: "JSON invalide" }, { status: 400 })
+  }
+  const parsed = PatchSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Données invalides" }, { status: 400 })
+  }
+
+  const { id, scoreId } = await params
+  const score = await prisma.songScore.findFirst({ where: { id: scoreId, songId: id }, select: { id: true, kind: true } })
+  if (!score) return NextResponse.json({ ok: false, error: "Partition introuvable" }, { status: 404 })
+
+  const { title, voice, position, abc } = parsed.data
+  if (abc !== undefined && score.kind !== "ABC") {
+    return NextResponse.json({ ok: false, error: "Le contenu d'un fichier PDF/image ne peut pas être modifié" }, { status: 400 })
+  }
+
+  const updated = await prisma.songScore.update({
+    where: { id: scoreId },
+    data: {
+      ...(title !== undefined ? { filename: title } : {}),
+      ...(voice !== undefined ? { voice } : {}),
+      ...(position !== undefined ? { position } : {}),
+      ...(abc !== undefined ? { abc, size: Buffer.byteLength(abc, "utf8") } : {}),
+    },
+    select: { id: true, kind: true, voice: true, position: true, filename: true, mimeType: true, size: true, abc: true },
+  })
+  return NextResponse.json({ ok: true, data: updated })
 }
 
 export async function DELETE(_req: Request, { params }: Params) {

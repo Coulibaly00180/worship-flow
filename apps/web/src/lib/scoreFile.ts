@@ -18,3 +18,34 @@ export function sanitizeFilename(name: string): string {
   const clean = base.replace(/[^\p{L}\p{N}._ ()-]/gu, "_").trim().slice(0, 120)
   return clean || "partition"
 }
+
+// ── Voix et partitions en notation ABC ───────────────────────────────────────
+
+export const VOICES = ["ALL", "SOPRANO", "ALTO", "TENOR", "BASSE", "ACCOMPAGNEMENT"] as const
+export type Voice = (typeof VOICES)[number]
+
+export const VOICE_LABEL: Record<Voice, string> = {
+  ALL: "Toutes voix",
+  SOPRANO: "Soprano",
+  ALTO: "Alto",
+  TENOR: "Ténor",
+  BASSE: "Basse",
+  ACCOMPAGNEMENT: "Accompagnement",
+}
+
+export function isVoice(v: unknown): v is Voice {
+  return typeof v === "string" && (VOICES as readonly string[]).includes(v)
+}
+
+export const MAX_ABC_CHARS = 100_000
+
+/** Modèle proposé pour une nouvelle partition (4/4, Do majeur). */
+export const ABC_TEMPLATE = `X:1
+T:Titre
+M:4/4
+L:1/4
+Q:1/4=90
+K:C
+C D E F | G A B c | c B A G | F E D C |]
+w: la la la la la la la la la la la la la la la la
+`

@@ -14,12 +14,12 @@ Routes actuellement implémentées (`apps/web/src/app/api`) :
 |-------|----------|--------------|
 | `/api/auth/[...nextauth]` | GET, POST | public (connexion limitée : 5 échecs / 15 min par compte, 30 par IP) |
 | `/api/health` | GET | public |
-| `/api/songs` | GET, POST | connecté / `CHANTRE` |
+| `/api/songs` | GET, POST | connecté / `CHANTRE` — GET : `q` (titre, artiste, étiquettes, paroles ; insensible aux accents), `letter`, `status` (`TO_LEARN`, `IN_PROGRESS`, `MASTERED`), `fav=1`, `scores=1`, `tag` |
 | `/api/songs/[id]` | GET, PATCH, DELETE | connecté / `CHANTRE` / `RESPONSABLE_CHANTRE` |
 | `/api/songs/[id]/favorite` | POST, DELETE | connecté |
 | `/api/songs/[id]/learning` | PUT | connecté |
-| `/api/songs/[id]/scores` | GET, POST | connecté / `CHANTRE` (PDF, PNG, JPEG, 8 Mo max, type vérifié sur le contenu) |
-| `/api/songs/[id]/scores/[scoreId]` | GET, DELETE | connecté / `CHANTRE` |
+| `/api/songs/[id]/scores` | GET, POST | connecté / `CHANTRE` — POST multipart (`file` PDF/PNG/JPEG 8 Mo max, type vérifié sur le contenu, `voice`) ou JSON `{ kind: "ABC", title, voice?, abc }` |
+| `/api/songs/[id]/scores/[scoreId]` | GET, PATCH, DELETE | connecté / `CHANTRE` — PATCH : `title`, `voice`, `position`, `abc` (ABC uniquement) ; GET d'une partition ABC renvoie le texte |
 | `/api/songs/import`, `/api/songs/import/confirm` | POST | `CHANTRE` |
 | `/api/plans` | GET, POST | connecté / `RESPONSABLE_CHANTRE` |
 | `/api/plans/[id]` | GET, PATCH, DELETE | connecté / `RESPONSABLE_CHANTRE` |

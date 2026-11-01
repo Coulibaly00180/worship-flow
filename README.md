@@ -5,8 +5,10 @@
 ## Fonctionnalités
 
 - **Bibliothèque de chants** — couplets, refrains, ponts ; recherche par titre, artiste ou paroles ; import en masse (DOCX / texte).
-- **Partitions** — PDF, PNG ou JPEG (8 Mo max) rattachés à un chant, consultables dans la fiche.
-- **Mode lecture** — affichage des paroles optimisé pour la scène.
+- **Partitions** — PDF/PNG/JPEG (8 Mo max) **ou créées dans l'application en notation ABC** (aperçu en direct, transposition), classées par voix (soprano, alto, ténor, basse, accompagnement).
+- **Mode lecture scène** — blocs ou texte défilant automatique, taille réglable, thème clair/sombre, écran maintenu allumé, clavier, partition de sa voix.
+- **Recherche** — titre, artiste, étiquettes et paroles, sans tenir compte des accents ; filtres favoris, statut, partition.
+- **Hors-ligne (PWA)** — installable sur téléphone ; bouton « Disponible hors-ligne » sur un chant ou un plan (HTTPS requis).
 - **Favoris et apprentissage** — chaque membre marque ses favoris et son niveau (à apprendre, en cours, maîtrisé).
 - **Plans de service** — ordre du service par date, duplication d'un plan, vue imprimable.
 - **Comptes et rôles** — `ADMIN`, `RESPONSABLE_CHANTRE`, `CHANTRE`, `LECTEUR` (voir `apps/web/src/lib/roles.ts`).

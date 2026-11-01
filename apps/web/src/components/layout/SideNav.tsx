@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
+import { clearOfflineCaches } from "@/lib/offline"
 import {
   LayoutDashboard, Music2, CalendarDays, Users,
   Heart, LogOut, UserCircle, Plus, X, Menu,
@@ -117,7 +118,7 @@ function NavContent({ user, onClose }: { user: NavUser; role: string; onClose?: 
       <div className="sidebar-footer">
         <button
           type="button"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={async () => { await clearOfflineCaches(); await signOut({ callbackUrl: "/login" }) }}
           className="sidebar-nav-link"
           style={{ color: "var(--color-outline)" }}
         >

@@ -4,7 +4,7 @@ const { mockAuth, mockPrisma } = vi.hoisted(() => ({
   mockAuth: vi.fn(),
   mockPrisma: {
     song: { findUnique: vi.fn() },
-    songScore: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
+    songScore: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
   },
 }))
 
@@ -12,7 +12,7 @@ vi.mock("@/lib/auth", () => ({ auth: mockAuth }))
 vi.mock("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 import { GET, POST } from "./route"
-import { GET as GET_ONE, DELETE } from "./[scoreId]/route"
+import { GET as GET_ONE, PATCH, DELETE } from "./[scoreId]/route"
 
 const params = { params: Promise.resolve({ id: "s1" }) }
 const oneParams = { params: Promise.resolve({ id: "s1", scoreId: "sc1" }) }
@@ -91,5 +91,71 @@ describe("scores API", () => {
     mockPrisma.songScore.deleteMany.mockResolvedValue({ count: 0 })
     expect((await DELETE(new Request("http://x"), oneParams)).status).toBe(404)
     expect(mockPrisma.songScore.deleteMany).toHaveBeenCalledWith({ where: { id: "sc1", songId: "s1" } })
+  })
+
+  it("enregistre la voix choisie à l'envoi d'un fichier", async () => {
+    const fd = new FormData()
+    fd.append("file", new File([PDF as BlobPart], "alto.pdf", { type: "application/pdf" }))
+    fd.append("voice", "ALTO")
+    const res = await POST(new Request("http://x", { method: "POST", body: fd }), params)
+    expect(res.status).toBe(201)
+    expect(mockPrisma.songScore.create.mock.calls.at(-1)?.[0].data).toMatchObject({ voice: "ALTO", kind: "FILE" })
+  })
+
+  it("400 pour une voix inconnue", async () => {
+    const fd = new FormData()
+    fd.append("file", new File([PDF as BlobPart], "x.pdf"))
+    fd.append("voice", "BARYTON")
+    expect((await POST(new Request("http://x", { method: "POST", body: fd }), params)).status).toBe(400)
+  })
+
+  it("crée une partition ABC (JSON) avec la position suivante", async () => {
+    mockPrisma.songScore.findFirst.mockResolvedValue({ position: 2 })
+    const res = await POST(
+      new Request("http://x", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "ABC", title: "Soprano", voice: "SOPRANO", abc: "X:1\nK:C\nCDEF|" }),
+      }),
+      params,
+    )
+    expect(res.status).toBe(201)
+    expect(mockPrisma.songScore.create.mock.calls.at(-1)?.[0].data).toMatchObject({
+      kind: "ABC", voice: "SOPRANO", position: 3, mimeType: "text/vnd.abc", filename: "Soprano",
+    })
+  })
+
+  it("400 pour une partition ABC vide ou sans titre", async () => {
+    const post = (body: unknown) =>
+      POST(new Request("http://x", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }), params)
+    expect((await post({ kind: "ABC", title: "T", abc: "" })).status).toBe(400)
+    expect((await post({ kind: "ABC", title: "  ", abc: "X:1" })).status).toBe(400)
+  })
+
+  it("PATCH : refuse de modifier le contenu d'un fichier PDF/image", async () => {
+    mockPrisma.songScore.findFirst.mockResolvedValue({ id: "sc1", kind: "FILE" })
+    const res = await PATCH(new Request("http://x", { method: "PATCH", body: JSON.stringify({ abc: "X:1" }) }), oneParams)
+    expect(res.status).toBe(400)
+    expect(mockPrisma.songScore.update).not.toHaveBeenCalled()
+  })
+
+  it("PATCH : modifie une partition ABC et recalcule la taille", async () => {
+    mockPrisma.songScore.findFirst.mockResolvedValue({ id: "sc1", kind: "ABC" })
+    mockPrisma.songScore.update.mockResolvedValue({ id: "sc1" })
+    const res = await PATCH(new Request("http://x", { method: "PATCH", body: JSON.stringify({ abc: "X:1\nK:G", voice: "TENOR" }) }), oneParams)
+    expect(res.status).toBe(200)
+    expect(mockPrisma.songScore.update.mock.calls[0][0].data).toMatchObject({ abc: "X:1\nK:G", voice: "TENOR", size: 7 })
+  })
+
+  it("PATCH : 403 pour un LECTEUR", async () => {
+    as("LECTEUR")
+    expect((await PATCH(new Request("http://x", { method: "PATCH", body: "{}" }), oneParams)).status).toBe(403)
+  })
+
+  it("GET d'une partition ABC renvoie le texte brut", async () => {
+    mockPrisma.songScore.findFirst.mockResolvedValue({ id: "sc1", kind: "ABC", abc: "X:1", data: null })
+    const res = await GET_ONE(new Request("http://x"), oneParams)
+    expect(res.headers.get("content-type")).toContain("text/plain")
+    expect(await res.text()).toBe("X:1")
   })
 })

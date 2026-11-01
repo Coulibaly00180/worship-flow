@@ -87,16 +87,23 @@ model ServiceItem {
 model SongScore {
   id           String   @id @default(cuid())
   songId       String
+  // FILE = PDF/PNG/JPEG (data) ; ABC = partition saisie en notation ABC (abc)
+  kind         String   @default("FILE")
+  // ALL, SOPRANO, ALTO, TENOR, BASSE, ACCOMPAGNEMENT
+  voice        String   @default("ALL")
+  position     Int      @default(0)
   filename     String
   mimeType     String
   size         Int
-  data         Bytes
+  data         Bytes?
+  abc          String?
   uploadedById String?
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
 
-  @@index([songId])
+  @@index([songId, position])
 }
 
 // ── Modèles spécifiques à l'app web ─────────────────────────────────────────

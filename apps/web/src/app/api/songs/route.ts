@@ -3,29 +3,24 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { CreateSongSchema } from "@/lib/validations"
 import { canEditSongs } from "@/lib/roles"
+import { buildSongQuery, sortByRank } from "@/lib/songSearch"
 
 export async function GET(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ ok: false, error: "Non authentifié" }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const q = searchParams.get("q")?.trim() ?? ""
-  const letter = searchParams.get("letter")?.trim() ?? ""
+  const { where, rank } = await buildSongQuery(session.user.id, {
+    q: searchParams.get("q") ?? "",
+    letter: searchParams.get("letter") ?? "",
+    status: searchParams.get("status") ?? "",
+    favorite: searchParams.get("fav") === "1",
+    withScore: searchParams.get("scores") === "1",
+    tag: searchParams.get("tag") ?? "",
+  })
 
-  const songs = await prisma.song.findMany({
-    where: {
-      deletedAt: null,
-      ...(q
-        ? {
-            OR: [
-              { title: { contains: q, mode: "insensitive" } },
-              { artist: { contains: q, mode: "insensitive" } },
-            ],
-          }
-        : letter
-          ? { title: { startsWith: letter, mode: "insensitive" } }
-          : {}),
-    },
+  const found = await prisma.song.findMany({
+    where,
     include: {
       blocks: { orderBy: { order: "asc" }, select: { id: true, order: true, type: true, title: true } },
       favorites: { where: { userId: session.user.id }, select: { userId: true } },
@@ -33,6 +28,7 @@ export async function GET(req: Request) {
     },
     orderBy: { title: "asc" },
   })
+  const songs = sortByRank(found, rank)
 
   return NextResponse.json({
     ok: true,

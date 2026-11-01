@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import localFont from "next/font/local"
 import "./globals.css"
 import { Providers } from "@/components/providers"
@@ -12,7 +12,14 @@ const manrope = localFont({
   variable: "--font-sans",
 })
 
+export const viewport: Viewport = {
+  themeColor: "#0b1326",
+}
+
 export const metadata: Metadata = {
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Chantres", statusBarStyle: "black-translucent" },
   title: "Church Presenter — Chantres",
   description: "Application de gestion des chants pour les chantres",
 }

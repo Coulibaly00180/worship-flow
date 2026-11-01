@@ -14,10 +14,16 @@ export default async function ReadModePage({ params }: Props) {
 
   const song = await prisma.song.findUnique({
     where: { id },
-    include: { blocks: { orderBy: { order: "asc" } } },
+    include: {
+      blocks: { orderBy: { order: "asc" } },
+      scores: {
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        select: { id: true, kind: true, voice: true, filename: true, mimeType: true, abc: true },
+      },
+    },
   })
 
   if (!song || song.deletedAt) notFound()
 
-  return <ReadModeClient song={song} />
+  return <ReadModeClient song={song} scores={song.scores} />
 }

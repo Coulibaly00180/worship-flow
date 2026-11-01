@@ -33,7 +33,17 @@ const nextConfig: NextConfig = {
   // Évite que Turbopack renomme ces modules (pg-<hash>) : introuvables au runtime en mode standalone
   serverExternalPackages: ["pg", "@prisma/adapter-pg"],
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }]
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Le service worker doit toujours être revalidé pour que les mises à jour arrivent
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ]
   },
   output: "standalone",
   // Monorepo : remonter à la racine pour que le tracing inclut node_modules racine

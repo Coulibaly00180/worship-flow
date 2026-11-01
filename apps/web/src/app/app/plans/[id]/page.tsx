@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { PlanActions } from "@/components/plans/PlanActions"
+import { OfflineButton } from "@/components/pwa/OfflineButton"
 import { canManagePlans } from "@/lib/roles"
 
 type Props = { params: Promise<{ id: string }> }
@@ -61,12 +62,28 @@ export default async function PlanDetailPage({ params }: Props) {
     include: {
       items: {
         orderBy: { order: "asc" },
-        include: { song: { select: { id: true, title: true, tags: true } } },
+        include: {
+          song: { select: { id: true, title: true, tags: true, scores: { select: { id: true, kind: true } } } },
+        },
       },
     },
   })
 
   if (!plan || plan.deletedAt) notFound()
+
+  // Pages et fichiers à enregistrer pour consulter le plan sans réseau
+  const offlineUrls = [
+    `/app/plans/${plan.id}`,
+    ...plan.items.flatMap((it) =>
+      it.song
+        ? [
+            `/app/songs/${it.song.id}`,
+            `/app/songs/${it.song.id}/read`,
+            ...it.song.scores.filter((sc) => sc.kind === "FILE").map((sc) => `/api/songs/${it.song!.id}/scores/${sc.id}`),
+          ]
+        : [],
+    ),
+  ]
 
   const totalMinutes = plan.items.reduce((acc, item) => acc + (DURATION_MIN[item.kind] ?? 2), 0)
 
@@ -113,6 +130,7 @@ export default async function PlanDetailPage({ params }: Props) {
             </Link>
           )}
           <PlanActions planId={plan.id} canManage={canManagePlans(session.user.role)} />
+          <OfflineButton urls={offlineUrls} withAbc={plan.items.some((it) => it.song?.scores.some((sc) => sc.kind === "ABC"))} />
         </div>
       </div>
 

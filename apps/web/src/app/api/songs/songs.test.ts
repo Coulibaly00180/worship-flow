@@ -8,6 +8,7 @@ const { mockAuth, mockPrisma } = vi.hoisted(() => {
       findFirst: vi.fn(),
       create: vi.fn(),
     },
+    $queryRaw: vi.fn(),
   }
   return { mockAuth, mockPrisma }
 })
@@ -72,13 +73,39 @@ describe("GET /api/songs", () => {
     expect(json.data[0].isFavorite).toBe(true)
   })
 
-  it("passe les params de recherche à Prisma", async () => {
-    await GET(new Request("http://localhost/api/songs?q=grace"))
+  it("recherche plein texte : restreint aux ids trouvés et les trie par pertinence", async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: "song-2" }, { id: "song-1" }])
+    mockPrisma.song.findMany.mockResolvedValue([
+      { ...baseSong, id: "song-1", favorites: [], learnings: [] },
+      { ...baseSong, id: "song-2", favorites: [], learnings: [] },
+    ])
+    const res = await GET(new Request("http://localhost/api/songs?q=gr%C3%A2ce"))
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.song.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: { in: ["song-2", "song-1"] } }) })
+    )
+    const json = await res.json()
+    expect(json.data.map((s: { id: string }) => s.id)).toEqual(["song-2", "song-1"])
+  })
+
+  it("applique les filtres favoris, partition et statut", async () => {
+    await GET(new Request("http://localhost/api/songs?fav=1&scores=1&status=MASTERED"))
     expect(mockPrisma.song.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ OR: expect.any(Array) }),
+        where: expect.objectContaining({
+          favorites: { some: { userId: "user-1" } },
+          scores: { some: {} },
+          learnings: { some: { userId: "user-1", status: "MASTERED" } },
+        }),
       })
     )
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled()
+  })
+
+  it("ignore un statut inconnu", async () => {
+    await GET(new Request("http://localhost/api/songs?status=HACK"))
+    const where = mockPrisma.song.findMany.mock.calls.at(-1)?.[0].where
+    expect(where.learnings).toBeUndefined()
   })
 
   it("filtre par lettre quand letter est fourni", async () => {

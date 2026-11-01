@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { LearningBadge } from "@/components/songs/LearningBadge"
 import { FavoriteToggle } from "@/components/songs/FavoriteToggle"
 import { LearningSelect } from "@/components/songs/LearningSelect"
+import { OfflineButton } from "@/components/pwa/OfflineButton"
 import { ScoresSection } from "@/components/songs/ScoresSection"
 import { canEditSongs } from "@/lib/roles"
 
@@ -33,7 +34,10 @@ export default async function SongDetailPage({ params }: Props) {
       blocks: { orderBy: { order: "asc" } },
       favorites: { where: { userId: session.user.id }, select: { userId: true } },
       learnings: { where: { userId: session.user.id }, select: { status: true } },
-      scores: { orderBy: { createdAt: "asc" }, select: { id: true, filename: true, mimeType: true, size: true } },
+      scores: {
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        select: { id: true, kind: true, voice: true, filename: true, mimeType: true, size: true, abc: true },
+      },
     },
   })
 
@@ -116,7 +120,18 @@ export default async function SongDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <ScoresSection songId={song.id} initial={song.scores} canEdit={canEditSongs(session.user.role)} />
+      <div className="mb-3 flex justify-end print:hidden">
+        <OfflineButton
+          withAbc={song.scores.some((sc) => sc.kind === "ABC")}
+          urls={[
+            `/app/songs/${song.id}`,
+            `/app/songs/${song.id}/read`,
+            ...song.scores.filter((sc) => sc.kind === "FILE").map((sc) => `/api/songs/${song.id}/scores/${sc.id}`),
+          ]}
+        />
+      </div>
+
+      <ScoresSection songId={song.id} songTitle={song.title} initial={song.scores} canEdit={canEditSongs(session.user.role)} />
 
       {/* Blocks */}
       <div className="flex flex-col gap-6">

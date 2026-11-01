@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
+import { clearOfflineCaches } from "@/lib/offline"
 import { Music, Calendar, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -47,7 +48,7 @@ export function AppNav({ user }: { user: NavUser }) {
           <span className="text-sm text-gray-500 hidden sm:block">{user.name}</span>
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={async () => { await clearOfflineCaches(); await signOut({ callbackUrl: "/login" }) }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-gray-600 hover:text-red-600 dark:text-gray-400 transition-colors"
           >
             <LogOut className="w-4 h-4" />
