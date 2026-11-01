@@ -3,7 +3,7 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 
-RUN apk add --no-cache openssl
+RUN for i in 1 2 3 4 5; do apk add --no-cache openssl && break || { echo "apk: nouvel essai ($i)"; sleep 5; }; done; apk info -e openssl
 
 # Lockfile racine + manifests workspace
 COPY package.json package-lock.json ./
@@ -18,7 +18,6 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 
 # Sources du workspace web
 COPY apps/web ./apps/web
@@ -44,8 +43,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME="0.0.0.0"
 
-RUN apk add --no-cache openssl && \
-    npm install -g prisma@7.10.0 && \
+RUN for i in 1 2 3 4 5; do apk add --no-cache openssl && break || { echo "apk: nouvel essai ($i)"; sleep 5; }; done; apk info -e openssl && \
+    npm install -g prisma@7.10.1 && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
@@ -58,12 +57,19 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone/apps/we
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
 
+# Turbopack crée des liens .next/node_modules/<pkg>-<hash> -> ../../../../../node_modules/<pkg>
+# valides dans le monorepo mais cassés dans cette image aplatie : on les repointe vers /app/node_modules.
+RUN find .next/node_modules -type l 2>/dev/null | while read -r l; do \
+      pkg=$(readlink "$l" | sed 's#.*/node_modules/##'); \
+      ln -sfn "/app/node_modules/$pkg" "$l"; \
+    done
+
 # Migrations (appliquées au démarrage via entrypoint) + config Prisma 7
 COPY --from=builder /app/apps/web/prisma ./prisma
 COPY --from=builder /app/apps/web/prisma.config.ts ./prisma.config.ts
 
 COPY apps/web/docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
+RUN tr -d '\r' < docker-entrypoint.sh > entrypoint.tmp && mv entrypoint.tmp docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 
 USER nextjs
 EXPOSE 3000

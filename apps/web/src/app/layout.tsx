@@ -1,10 +1,16 @@
 import type { Metadata } from "next"
-import { Manrope } from "next/font/google"
+import localFont from "next/font/local"
 import "./globals.css"
 import { Providers } from "@/components/providers"
 import { Toaster } from "sonner"
 
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-sans" })
+// Police auto-hébergée (OFL) : pas de dépendance à Google Fonts au build ni à l'exécution
+const manrope = localFont({
+  src: "./fonts/manrope-latin-wght-normal.woff2",
+  weight: "200 800",
+  display: "swap",
+  variable: "--font-sans",
+})
 
 export const metadata: Metadata = {
   title: "Church Presenter — Chantres",

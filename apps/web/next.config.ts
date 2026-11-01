@@ -30,6 +30,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Évite que Turbopack renomme ces modules (pg-<hash>) : introuvables au runtime en mode standalone
+  serverExternalPackages: ["pg", "@prisma/adapter-pg"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }]
   },
