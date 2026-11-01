@@ -5,6 +5,8 @@ et alimenter la base de test entre les suites de tests.
 
 ---
 
+> **État actuel.** Seul `seed-admin.ts` existe (`npm run seed:admin -w @cp/web`, variables `ADMIN_EMAIL`, `ADMIN_PASSWORD`, optionnelles `ADMIN_USERNAME`, `ADMIN_FIRST_NAME`, `ADMIN_LAST_NAME`). Il utilise Prisma 7 avec l'adaptateur `@prisma/adapter-pg` et le client généré dans `src/generated/prisma`. Les scripts `index.ts` et `seed-test.ts` décrits plus bas sont des projets non réalisés.
+
 ## Pourquoi un seed est indispensable
 
 L'app n'a pas d'inscription publique. Sans seed, impossible de :
@@ -76,7 +78,7 @@ main()
 **Utilisation :**
 ```bash
 cd apps/web
-ADMIN_EMAIL="admin@eglise.com" ADMIN_PASSWORD="motdepasse-fort" npx ts-node prisma/seed/seed-admin.ts
+ADMIN_EMAIL="admin@eglise.com" ADMIN_PASSWORD="motdepasse-fort" npx tsx prisma/seed/seed-admin.ts
 ```
 
 **En production via Vercel CLI :**
@@ -84,7 +86,7 @@ ADMIN_EMAIL="admin@eglise.com" ADMIN_PASSWORD="motdepasse-fort" npx ts-node pris
 vercel env pull .env.production.local
 ADMIN_EMAIL="admin@eglise.com" ADMIN_PASSWORD="motdepasse-fort" \
   DATABASE_URL=$(grep DATABASE_URL .env.production.local | cut -d= -f2) \
-  npx ts-node apps/web/prisma/seed/seed-admin.ts
+  npx tsx apps/web/prisma/seed/seed-admin.ts
 ```
 
 ---

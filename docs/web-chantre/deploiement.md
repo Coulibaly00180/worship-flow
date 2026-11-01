@@ -32,6 +32,30 @@ PostgreSQL Supabase (free tier)
 
 ---
 
+## 0. Docker (testé) et Prisma 7
+
+**Image de production** — `docker build -f apps/web/Dockerfile -t church-presenter-web .` (contexte = racine du dépôt).
+Sur Docker Desktop, si `apk add` échoue en DNS, ajouter `--network=host`.
+
+```bash
+docker run -d -p 3000:3000   -e DATABASE_URL=postgresql://user:pass@hote:5432/base   -e AUTH_SECRET=$(openssl rand -base64 32)   -e AUTH_URL=https://votre-domaine -e AUTH_TRUST_HOST=true   church-presenter-web
+```
+
+- Au démarrage, `docker-entrypoint.sh` exécute `prisma migrate deploy --config=./prisma.config.ts` (désactivable avec `RUN_MIGRATIONS=false`), puis lance Next.
+- `HEALTHCHECK` sur `/api/health` (503 si la base est injoignable).
+- Premier compte admin : `ADMIN_EMAIL=… ADMIN_PASSWORD=… npm run seed:admin -w @cp/web` (depuis un poste ayant accès à la base).
+- **Dev local** : copier `.env.docker.example` en `.env.docker`, puis `docker compose -f docker-compose.local.yml up --build` (app sur le port 3010, admin créé par le service `seed`).
+
+**Prisma 7** — pas de moteur Rust : connexion via `@prisma/adapter-pg` (`src/lib/prisma.ts`), configuration dans `apps/web/prisma.config.ts`
+(charge `.env.local` puis `.env`), client généré dans `src/generated/prisma` (ignoré par git, produit par `prisma generate` / `postinstall`).
+
+**Pièges déjà rencontrés** : scripts `.sh` en LF (`.gitattributes`), police Manrope auto-hébergée (pas de Google Fonts au build),
+liens `.next/node_modules` de Turbopack repointés dans l'image, `pg` déclaré dans `serverExternalPackages`.
+
+**CI** : lint → typecheck → tests → build → `npm audit --omit=dev --audit-level=high` (bloquant) → build de l'image Docker. Dependabot : hebdomadaire (npm).
+
+---
+
 ## 1. Prérequis
 
 - [ ] Compte Vercel créé et lié au compte GitHub

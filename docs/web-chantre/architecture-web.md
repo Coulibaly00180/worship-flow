@@ -6,6 +6,10 @@ Structure de fichiers, patterns de code et conventions pour l'app Next.js 15.
 
 ---
 
+> **Stack actuelle (nov. 2026)** : Next.js 16 (Turbopack), React 19, NextAuth v5 (JWT), Prisma 7 + `@prisma/adapter-pg`, Zod 4, Vitest 4, Tailwind CSS 4, PostgreSQL.
+> Ajouts depuis la conception : partitions (`SongScore`, fichiers stockés en `BYTEA`, 8 Mo), duplication/impression/notes des plans,
+> limitation des tentatives de connexion (`src/lib/rateLimit.ts`, en mémoire par instance), en-têtes de sécurité (`next.config.ts`), `auth()` qui invalide les comptes désactivés.
+
 ## Structure de fichiers
 
 ```

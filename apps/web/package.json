@@ -15,8 +15,7 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed": "ts-node --esm prisma/seed/index.ts",
-    "seed:admin": "ts-node --esm prisma/seed/seed-admin.ts",
+    "seed:admin": "tsx prisma/seed/seed-admin.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -55,6 +54,7 @@
     "msw": "~2.12.14",
     "prisma": "^7.10.1",
     "tailwindcss": "~4.1.18",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.17.0",
     "vitest": "^4.1.10"

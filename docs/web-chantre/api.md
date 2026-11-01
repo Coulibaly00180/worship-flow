@@ -4,6 +4,35 @@ Contrats des Route Handlers Next.js 15. Toutes les routes sont préfixées `/api
 Les Server Actions sont utilisées pour les mutations depuis les formulaires React ;
 les Route Handlers servent pour TanStack Query (GET) et les mutations hors-formulaire.
 
+## État réel de l'implémentation (novembre 2026)
+
+Le reste du document est la **conception initiale** ; certaines routes décrites plus bas
+(`/api/plans/today`, `/api/admin/users`, `/api/profile`, notes de blocs…) n'existent pas ou ont un autre chemin.
+Routes actuellement implémentées (`apps/web/src/app/api`) :
+
+| Route | Méthodes | Rôle minimum |
+|-------|----------|--------------|
+| `/api/auth/[...nextauth]` | GET, POST | public (connexion limitée : 5 échecs / 15 min par compte, 30 par IP) |
+| `/api/health` | GET | public |
+| `/api/songs` | GET, POST | connecté / `CHANTRE` |
+| `/api/songs/[id]` | GET, PATCH, DELETE | connecté / `CHANTRE` / `RESPONSABLE_CHANTRE` |
+| `/api/songs/[id]/favorite` | POST, DELETE | connecté |
+| `/api/songs/[id]/learning` | PUT | connecté |
+| `/api/songs/[id]/scores` | GET, POST | connecté / `CHANTRE` (PDF, PNG, JPEG, 8 Mo max, type vérifié sur le contenu) |
+| `/api/songs/[id]/scores/[scoreId]` | GET, DELETE | connecté / `CHANTRE` |
+| `/api/songs/import`, `/api/songs/import/confirm` | POST | `CHANTRE` |
+| `/api/plans` | GET, POST | connecté / `RESPONSABLE_CHANTRE` |
+| `/api/plans/[id]` | GET, PATCH, DELETE | connecté / `RESPONSABLE_CHANTRE` |
+| `/api/plans/[id]/items` | PUT | `RESPONSABLE_CHANTRE` (remplace tous les éléments, notes et médias conservés) |
+| `/api/plans/[id]/duplicate` | POST | `RESPONSABLE_CHANTRE` — corps `{ date, title? }`, 409 si la date est prise |
+| `/api/users` | GET, POST | `RESPONSABLE_CHANTRE` |
+| `/api/users/[id]` | PATCH, DELETE | soi-même ou gestionnaire (rang strictement supérieur) / `ADMIN` |
+
+Règles utilisateurs : mot de passe, email et nom d'un autre compte = `ADMIN` seulement ; rôle et activation = `ADMIN` ;
+un compte désactivé perd immédiatement ses droits (la session est relue en base).
+
+Validation : Zod 4 (`error.issues`). Une requête JSON invalide renvoie `400`.
+
 ---
 
 ## Conventions

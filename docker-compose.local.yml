@@ -23,6 +23,7 @@ services:
       # Polling requis sur Windows/WSL2 Docker pour que le hot-reload + Tailwind watcher fonctionne
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
+      AUTH_TRUST_HOST: "true"
     ports:
       - "3010:3000"
     volumes:
@@ -43,6 +44,7 @@ services:
     working_dir: /workspace/apps/web
     command: >
       sh -c "
+        npx prisma generate &&
         npx prisma migrate deploy &&
         npx tsx prisma/seed/seed-admin.ts
       "
