@@ -56,7 +56,7 @@ export async function POST(req: Request) {
   const body = await req.json()
   const parsed = CreateSongSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.errors[0].message }, { status: 400 })
+    return NextResponse.json({ ok: false, error: parsed.error.issues[0].message }, { status: 400 })
   }
 
   const { blocks, ...songData } = parsed.data

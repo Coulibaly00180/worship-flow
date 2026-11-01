@@ -54,7 +54,7 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
   const [searchingFor, setSearchingFor] = useState<number | null>(null)
 
   useEffect(() => {
-    if (!songQuery.trim()) { setSongResults([]); return }
+    if (!songQuery.trim()) return
     const t = setTimeout(async () => {
       const res = await fetch(`/api/songs?q=${encodeURIComponent(songQuery)}`)
       const json = await res.json()
@@ -278,7 +278,7 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
                               style={{ color: "var(--color-on-surface)" }}
                             />
                           </div>
-                          {searchingFor === idx && songResults.length > 0 && (
+                          {searchingFor === idx && songQuery.trim() && songResults.length > 0 && (
                             <ul
                               className="absolute left-0 right-0 top-full mt-1 z-10 rounded-lg shadow-lg overflow-hidden"
                               style={{

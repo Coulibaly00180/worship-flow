@@ -48,7 +48,7 @@ export async function PATCH(req: Request, { params }: Params) {
   const body = await req.json()
   const parsed = UpdateSongSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.errors[0].message }, { status: 400 })
+    return NextResponse.json({ ok: false, error: parsed.error.issues[0].message }, { status: 400 })
   }
 
   const song = await prisma.song.findUnique({ where: { id } })

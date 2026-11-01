@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: Params) {
   }
   const parsed = DuplicateSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.errors[0]?.message ?? "Données invalides" }, { status: 400 })
+    return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Données invalides" }, { status: 400 })
   }
 
   const { id } = await params

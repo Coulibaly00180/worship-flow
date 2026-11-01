@@ -40,7 +40,7 @@ export async function PUT(req: Request, { params }: Params) {
   }
   const parsed = BodySchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.errors[0].message }, { status: 400 })
+    return NextResponse.json({ ok: false, error: parsed.error.issues[0].message }, { status: 400 })
   }
 
   const plan = await prisma.servicePlan.findUnique({ where: { id: planId } })

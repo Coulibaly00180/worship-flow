@@ -140,11 +140,10 @@ export function SideNav({ user }: { user: NavUser }) {
 
 /** Bouton hamburger + drawer mobile (< lg) */
 export function MobileNav({ user }: { user: NavUser }) {
-  const [open, setOpen] = useState(false)
+  // Le menu est lié à la route où il a été ouvert : changer de page le referme sans effet.
+  const [openPath, setOpenPath] = useState<string | null>(null)
   const pathname = usePathname()
-
-  // Fermer automatiquement au changement de route
-  useEffect(() => { setOpen(false) }, [pathname])
+  const open = openPath === pathname
 
   // Bloquer le scroll body quand ouvert
   useEffect(() => {
@@ -165,7 +164,7 @@ export function MobileNav({ user }: { user: NavUser }) {
       >
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => setOpenPath(pathname)}
           className="w-9 h-9 flex items-center justify-center rounded-lg"
           style={{ color: "var(--color-on-surface-variant)" }}
           aria-label="Menu"
@@ -182,7 +181,7 @@ export function MobileNav({ user }: { user: NavUser }) {
         <div
           className="lg:hidden fixed inset-0 z-40"
           style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
-          onClick={() => setOpen(false)}
+          onClick={() => setOpenPath(null)}
         />
       )}
 
@@ -197,7 +196,7 @@ export function MobileNav({ user }: { user: NavUser }) {
           transition: "transform 0.25s ease",
         }}
       >
-        <NavContent user={user} role={user.role ?? ""} onClose={() => setOpen(false)} />
+        <NavContent user={user} role={user.role ?? ""} onClose={() => setOpenPath(null)} />
       </aside>
     </>
   )

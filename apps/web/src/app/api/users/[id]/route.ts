@@ -49,7 +49,7 @@ export async function PATCH(req: Request, { params }: Params) {
   }
   const parsed = UpdateUserSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.errors[0].message }, { status: 400 })
+    return NextResponse.json({ ok: false, error: parsed.error.issues[0].message }, { status: 400 })
   }
 
   const { password, role, isActive, username, firstName, lastName, ...rest } = parsed.data
