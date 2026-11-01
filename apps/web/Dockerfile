@@ -1,6 +1,6 @@
 # Context : racine du monorepo (docker build -f apps/web/Dockerfile .)
 # ── Stage 1 : dépendances ────────────────────────────────────────────────────
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 
 RUN for i in 1 2 3 4 5; do apk add --no-cache openssl && break || { echo "apk: nouvel essai ($i)"; sleep 5; }; done; apk info -e openssl
@@ -14,7 +14,7 @@ RUN npm ci --workspace=apps/web --ignore-scripts
 
 
 # ── Stage 2 : build Next.js ──────────────────────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -35,7 +35,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 RUN cd apps/web && mkdir -p public && npm run build
 
 # ── Stage 3 : image de production ───────────────────────────────────────────
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production \
