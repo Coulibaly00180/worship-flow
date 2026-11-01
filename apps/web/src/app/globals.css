@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./accents.css";
 
 /*
  * Worship Flow — système de design
@@ -66,7 +67,7 @@
   --shadow-md: 0 4px 14px rgba(60,40,20,0.1);
 
   /* Mise en page */
-  --sidebar-width: 248px;
+  --sidebar-width: 15.5rem;
   --bottom-nav-height: 64px;
 
   /* Rayons */
@@ -694,6 +695,19 @@
     -webkit-overflow-scrolling: touch;
   }
   .scroll-x::-webkit-scrollbar { display: none; }
+}
+
+/* ── Personnalisation (réglages de l'appareil, posés sur <html> par theme/appearance) ── */
+:root[data-text="large"]  { font-size: 112.5%; }
+:root[data-text="xlarge"] { font-size: 125%; }
+:root[data-lyrics="serif"] .lyrics { font-family: var(--font-serif); }
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* ── Mouvement réduit ── */

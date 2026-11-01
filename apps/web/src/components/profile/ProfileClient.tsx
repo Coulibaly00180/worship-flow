@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { signOut } from "next-auth/react"
 import { Heart, TrendingUp, User, LogOut, Users, ChevronRight } from "lucide-react"
-import { ThemeToggle } from "@/components/layout/ThemeToggle"
+import { AppearanceSettings } from "@/components/profile/AppearanceSettings"
 import { clearOfflineCaches } from "@/lib/offline"
 import { canAccessUserAdmin } from "@/lib/roles"
 
@@ -123,13 +123,7 @@ export function ProfileClient({
             </div>
           </div>
 
-          <section className="card" aria-labelledby="appearance">
-            <h2 id="appearance" className="text-base font-bold mb-3" style={{ fontFamily: "var(--font-sans)" }}>Apparence</h2>
-            <ThemeToggle />
-            <p className="text-sm mt-2" style={{ color: "var(--color-on-surface-variant)" }}>
-              « Auto » suit le réglage de votre appareil.
-            </p>
-          </section>
+          <AppearanceSettings />
 
           {canAccessUserAdmin(user.role) && (
             <Link href="/app/admin/users" className="card flex items-center gap-3" style={{ textDecoration: "none", minHeight: 64 }}>

@@ -15,7 +15,7 @@
 
 ## Interface
 
-Clair chaleureux par défaut (sombre en option), pensée pour le téléphone : barre de navigation en bas, polices lisibles auto-hébergées, tout en français.
+Clair chaleureux par défaut (sombre en option), pensée pour le téléphone : barre de navigation en bas, polices lisibles auto-hébergées, tout en français. Personnalisable (thème, couleur d'accent, taille du texte, police des paroles, animations).
 Voir `docs/web-chantre/design-system.md`.
 
 ## Prérequis

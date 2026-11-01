@@ -1,0 +1,114 @@
+/* FICHIER GÉNÉRÉ par scripts/gen-accents.mjs depuis src/lib/accents.json — ne pas modifier à la main. */
+/* Un accent remplace uniquement les jetons --color-primary*, en clair puis en sombre. */
+
+/* Bleu nuit */
+:root[data-accent="bleu"] {
+  --color-primary: #1f4e8c;
+  --color-primary-dim: #2a64ad;
+  --color-primary-deep: #163a69;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #dce8f7;
+  --color-on-primary-container: #12335f;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-accent="bleu"] {
+    --color-primary: #9cc2f2;
+    --color-primary-dim: #7fb0ec;
+    --color-primary-deep: #5b8fd0;
+    --color-on-primary: #0c2340;
+    --color-primary-container: #1d3552;
+    --color-on-primary-container: #d6e6fb;
+  }
+}
+:root[data-theme="dark"][data-accent="bleu"] {
+  --color-primary: #9cc2f2;
+  --color-primary-dim: #7fb0ec;
+  --color-primary-deep: #5b8fd0;
+  --color-on-primary: #0c2340;
+  --color-primary-container: #1d3552;
+  --color-on-primary-container: #d6e6fb;
+}
+
+/* Vert forêt */
+:root[data-accent="vert"] {
+  --color-primary: #2d6a4f;
+  --color-primary-dim: #357a5a;
+  --color-primary-deep: #1f4d38;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #dcefe4;
+  --color-on-primary-container: #17402d;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-accent="vert"] {
+    --color-primary: #8fd3b0;
+    --color-primary-dim: #6fc29a;
+    --color-primary-deep: #4aa57b;
+    --color-on-primary: #0a2d1c;
+    --color-primary-container: #1e3a2d;
+    --color-on-primary-container: #d3f0e0;
+  }
+}
+:root[data-theme="dark"][data-accent="vert"] {
+  --color-primary: #8fd3b0;
+  --color-primary-dim: #6fc29a;
+  --color-primary-deep: #4aa57b;
+  --color-on-primary: #0a2d1c;
+  --color-primary-container: #1e3a2d;
+  --color-on-primary-container: #d3f0e0;
+}
+
+/* Violet */
+:root[data-accent="violet"] {
+  --color-primary: #6b3fa0;
+  --color-primary-dim: #8250bd;
+  --color-primary-deep: #4f2d7a;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #ece2f7;
+  --color-on-primary-container: #3f2563;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-accent="violet"] {
+    --color-primary: #cdb0f0;
+    --color-primary-dim: #b894e6;
+    --color-primary-deep: #9a70d1;
+    --color-on-primary: #2a1245;
+    --color-primary-container: #3a2a52;
+    --color-on-primary-container: #eadcfb;
+  }
+}
+:root[data-theme="dark"][data-accent="violet"] {
+  --color-primary: #cdb0f0;
+  --color-primary-dim: #b894e6;
+  --color-primary-deep: #9a70d1;
+  --color-on-primary: #2a1245;
+  --color-primary-container: #3a2a52;
+  --color-on-primary-container: #eadcfb;
+}
+
+/* Terre cuite */
+:root[data-accent="terre"] {
+  --color-primary: #a8402c;
+  --color-primary-dim: #c05540;
+  --color-primary-deep: #7f2f1f;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #f7e1da;
+  --color-on-primary-container: #6b2314;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-accent="terre"] {
+    --color-primary: #f0a898;
+    --color-primary-dim: #e48d7b;
+    --color-primary-deep: #c9674f;
+    --color-on-primary: #3a1008;
+    --color-primary-container: #4d2a22;
+    --color-on-primary-container: #ffdcd2;
+  }
+}
+:root[data-theme="dark"][data-accent="terre"] {
+  --color-primary: #f0a898;
+  --color-primary-dim: #e48d7b;
+  --color-primary-deep: #c9674f;
+  --color-on-primary: #3a1008;
+  --color-primary-container: #4d2a22;
+  --color-on-primary-container: #ffdcd2;
+}

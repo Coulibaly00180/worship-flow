@@ -137,7 +137,7 @@ export default async function SongDetailPage({ params }: Props) {
               >
                 {block.label}
               </h3>
-              <p className="whitespace-pre-line" style={{ fontSize: "1.1875rem", lineHeight: 1.75, color: "var(--color-on-surface)" }}>
+              <p className="whitespace-pre-line lyrics" style={{ fontSize: "1.1875rem", lineHeight: 1.75, color: "var(--color-on-surface)" }}>
                 {block.content}
               </p>
             </article>

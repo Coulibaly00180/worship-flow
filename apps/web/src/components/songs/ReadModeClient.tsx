@@ -190,7 +190,7 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
             {song.blocks.map((b) => (
               <section key={b.id} className="mb-10">
                 <p className={`text-xs font-semibold tracking-[0.2em] uppercase mb-3 ${muted}`}>{blockTypeLabel[b.type] ?? b.type}</p>
-                <p className="whitespace-pre-line font-medium">{b.content}</p>
+                <p className="whitespace-pre-line font-medium lyrics">{b.content}</p>
               </section>
             ))}
             <div style={{ height: "60vh" }} aria-hidden="true" />
@@ -201,7 +201,7 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
           <p className={`text-xs font-semibold tracking-[0.2em] uppercase mb-6 ${muted}`}>
             {blockTypeLabel[block?.type ?? ""] ?? block?.type ?? ""}
           </p>
-          <p className="font-medium leading-relaxed whitespace-pre-line max-w-2xl" style={{ fontSize: `${prefs.fontSize}px`, lineHeight: 1.7 }}>
+          <p className="font-medium leading-relaxed whitespace-pre-line max-w-2xl lyrics" style={{ fontSize: `${prefs.fontSize}px`, lineHeight: 1.7 }}>
             {block?.content}
           </p>
           {current + 1 < total && (

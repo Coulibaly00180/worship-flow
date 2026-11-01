@@ -1,0 +1,35 @@
+{
+  "default": "bordeaux",
+  "accents": {
+    "bordeaux": {
+      "label": "Bordeaux",
+      "swatch": "#8c2a3e",
+      "light": { "primary": "#8c2a3e", "primary-dim": "#a93a50", "primary-deep": "#6e1f30", "on-primary": "#ffffff", "primary-container": "#f6e1e5", "on-primary-container": "#5e1827" },
+      "dark":  { "primary": "#f2a7b5", "primary-dim": "#e58a9c", "primary-deep": "#c0556b", "on-primary": "#3b0e18", "primary-container": "#4a2029", "on-primary-container": "#ffd9df" }
+    },
+    "bleu": {
+      "label": "Bleu nuit",
+      "swatch": "#1f4e8c",
+      "light": { "primary": "#1f4e8c", "primary-dim": "#2a64ad", "primary-deep": "#163a69", "on-primary": "#ffffff", "primary-container": "#dce8f7", "on-primary-container": "#12335f" },
+      "dark":  { "primary": "#9cc2f2", "primary-dim": "#7fb0ec", "primary-deep": "#5b8fd0", "on-primary": "#0c2340", "primary-container": "#1d3552", "on-primary-container": "#d6e6fb" }
+    },
+    "vert": {
+      "label": "Vert forêt",
+      "swatch": "#2d6a4f",
+      "light": { "primary": "#2d6a4f", "primary-dim": "#357a5a", "primary-deep": "#1f4d38", "on-primary": "#ffffff", "primary-container": "#dcefe4", "on-primary-container": "#17402d" },
+      "dark":  { "primary": "#8fd3b0", "primary-dim": "#6fc29a", "primary-deep": "#4aa57b", "on-primary": "#0a2d1c", "primary-container": "#1e3a2d", "on-primary-container": "#d3f0e0" }
+    },
+    "violet": {
+      "label": "Violet",
+      "swatch": "#6b3fa0",
+      "light": { "primary": "#6b3fa0", "primary-dim": "#8250bd", "primary-deep": "#4f2d7a", "on-primary": "#ffffff", "primary-container": "#ece2f7", "on-primary-container": "#3f2563" },
+      "dark":  { "primary": "#cdb0f0", "primary-dim": "#b894e6", "primary-deep": "#9a70d1", "on-primary": "#2a1245", "primary-container": "#3a2a52", "on-primary-container": "#eadcfb" }
+    },
+    "terre": {
+      "label": "Terre cuite",
+      "swatch": "#a8402c",
+      "light": { "primary": "#a8402c", "primary-dim": "#c05540", "primary-deep": "#7f2f1f", "on-primary": "#ffffff", "primary-container": "#f7e1da", "on-primary-container": "#6b2314" },
+      "dark":  { "primary": "#f0a898", "primary-dim": "#e48d7b", "primary-deep": "#c9674f", "on-primary": "#3a1008", "primary-container": "#4d2a22", "on-primary-container": "#ffdcd2" }
+    }
+  }
+}

@@ -31,6 +31,27 @@ Les partitions s'affichent toujours en noir sur blanc (`--color-paper`), même e
 - **Source Serif 4** — titres (`h1`, `h2`), pour l'esprit « recueil de chants ».
 - Aucune requête vers Google Fonts : les fichiers sont dans `src/app/fonts`.
 
+## Personnalisation (Profil → Personnaliser l'interface)
+Réglages **propres à l'appareil** (stockés dans le navigateur, appliqués tout de suite, sans « flash » au chargement grâce à un script d'initialisation) :
+
+| Réglage | Choix | Mécanisme |
+|---------|-------|-----------|
+| Thème | Auto / Clair / Sombre | `data-theme` sur `<html>` (`src/lib/theme.ts`) |
+| Couleur d'accent | Bordeaux (défaut), Bleu nuit, Vert forêt, Violet, Terre cuite | `data-accent` ; palettes dans `src/lib/accents.json`, CSS généré par `node scripts/gen-accents.mjs` |
+| Taille du texte | Normal / Grand (112 %) / Très grand (125 %) | `data-text` : change la taille de base (`rem`), tout l'écran suit |
+| Police des paroles | Lisible (Atkinson) / Recueil (Source Serif) | `data-lyrics`, classe `.lyrics` |
+| Animations | Selon l'appareil / Réduites | `data-motion` |
+
+Garde-fous : un test vérifie le **contraste WCAG AA (≥ 4,5:1)** de chaque accent en clair et en sombre (texte du bouton, survol,
+accent en texte, conteneur) et que `accents.css` est synchronisé avec `accents.json`. Toute valeur stockée inconnue ou altérée retombe sur le défaut.
+Pour ajouter un accent : l'ajouter dans `accents.json`, lancer le générateur, lancer les tests.
+Les réglages du mode lecture (taille, thème, vitesse) restent séparés (`src/lib/readPrefs.ts`).
+
+## Dialogues
+Composant `Modal` (`src/components/ui/Modal.tsx`) : rôle `dialog` + `aria-modal`, focus placé à l'ouverture, **focus piégé** (Tab / Maj+Tab),
+Échap pour fermer, focus rendu au bouton d'origine, défilement bloqué ; sur téléphone la fenêtre s'ouvre en feuille depuis le bas.
+La confirmation de suppression place le focus sur « Annuler ».
+
 ## Navigation
 - Mobile : barre du haut (marque + avatar → profil) et **barre du bas** : Accueil · Chants · Plans · Favoris · Profil.
 - Ordinateur : menu latéral (+ « Nouveau plan » pour les responsables, « Utilisateurs » pour les gestionnaires, choix du thème, déconnexion).
