@@ -4,6 +4,7 @@ import { ArrowLeft, Pencil, Music2, BookOpen, Megaphone, Timer } from "lucide-re
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { PlanActions } from "@/components/plans/PlanActions"
 import { canManagePlans } from "@/lib/roles"
 
 type Props = { params: Promise<{ id: string }> }
@@ -88,7 +89,7 @@ export default async function PlanDetailPage({ params }: Props) {
     <div className="page-container max-w-3xl">
       <Link
         href="/app/plans"
-        className="inline-flex items-center gap-1.5 text-sm mb-6 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm mb-6 transition-colors print:hidden"
         style={{ color: "var(--color-on-surface-variant)" }}
       >
         <ArrowLeft size={14} />
@@ -104,12 +105,15 @@ export default async function PlanDetailPage({ params }: Props) {
             <p className="text-sm mt-1 capitalize" style={{ color: "var(--color-on-surface-variant)" }}>{dateStr}</p>
           )}
         </div>
-        {canManagePlans(session.user.role) && (
-          <Link href={`/app/plans/${plan.id}/edit`} className="btn btn-secondary btn-sm mt-1 shrink-0">
-            <Pencil size={14} />
-            Modifier
-          </Link>
-        )}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          {canManagePlans(session.user.role) && (
+            <Link href={`/app/plans/${plan.id}/edit`} className="btn btn-secondary btn-sm mt-1 print:hidden">
+              <Pencil size={14} />
+              Modifier
+            </Link>
+          )}
+          <PlanActions planId={plan.id} canManage={canManagePlans(session.user.role)} />
+        </div>
       </div>
 
       {/* Items */}
@@ -157,6 +161,11 @@ export default async function PlanDetailPage({ params }: Props) {
                   <p className="text-sm font-semibold truncate" style={{ color: "var(--color-on-surface)" }}>
                     {item.title ?? item.song?.title ?? KIND_LABEL[item.kind]}
                   </p>
+                  {item.notes && (
+                    <p className="text-xs mt-0.5 whitespace-pre-line" style={{ color: "var(--color-on-surface-variant)" }}>
+                      {item.notes}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 mt-0.5">
                     {tags.slice(0, 2).map((t) => (
                       <span key={t} className="key-badge">{t}</span>
@@ -172,7 +181,7 @@ export default async function PlanDetailPage({ params }: Props) {
                 {isSong && item.song && (
                   <Link
                     href={`/app/songs/${item.song.id}`}
-                    className="text-xs font-medium hover:underline shrink-0"
+                    className="text-xs font-medium hover:underline shrink-0 print:hidden"
                     style={{ color: "var(--color-secondary)" }}
                   >
                     Voir

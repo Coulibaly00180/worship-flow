@@ -12,6 +12,12 @@ const ItemSchema = z.object({
   title: z.string().optional().nullable(),
   content: z.string().optional().nullable(),
   songId: z.string().optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+  refId: z.string().optional().nullable(),
+  refSubId: z.string().optional().nullable(),
+  mediaPath: z.string().optional().nullable(),
+  secondaryContent: z.string().optional().nullable(),
+  backgroundConfig: z.string().optional().nullable(),
 })
 
 const BodySchema = z.object({
@@ -26,7 +32,12 @@ export async function PUT(req: Request, { params }: Params) {
   }
 
   const { id: planId } = await params
-  const body = await req.json()
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ ok: false, error: "JSON invalide" }, { status: 400 })
+  }
   const parsed = BodySchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: parsed.error.errors[0].message }, { status: 400 })
@@ -40,14 +51,19 @@ export async function PUT(req: Request, { params }: Params) {
   const items = await prisma.$transaction(async (tx) => {
     await tx.serviceItem.deleteMany({ where: { planId } })
     return tx.serviceItem.createMany({
-      data: parsed.data.items.map((it) => ({
+      data: parsed.data.items.map((it, index) => ({
         planId,
-        order: it.order,
+        order: index,
         kind: it.kind,
         title: it.title ?? null,
         content: it.content ?? null,
         songId: it.songId ?? null,
-        refId: it.songId ?? null,
+        refId: it.refId ?? it.songId ?? null,
+        refSubId: it.refSubId ?? null,
+        notes: it.notes ?? null,
+        mediaPath: it.mediaPath ?? null,
+        secondaryContent: it.secondaryContent ?? null,
+        backgroundConfig: it.backgroundConfig ?? null,
       })),
     })
   })

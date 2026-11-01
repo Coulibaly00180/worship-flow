@@ -492,3 +492,25 @@
     margin: 20px 0;
   }
 }
+
+/* ── Impression (plans de service) : fond blanc, texte noir, sans navigation ── */
+@media print {
+  aside,
+  nav {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-color: #999 !important;
+  }
+  .page-container {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}

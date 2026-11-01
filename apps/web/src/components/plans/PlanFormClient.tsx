@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Plus, Trash2, GripVertical, Search } from "lucide-react"
+import { Plus, Trash2, Search, ChevronUp, ChevronDown, Copy } from "lucide-react"
 
 type Song = { id: string; title: string; artist?: string | null }
 
@@ -15,6 +15,13 @@ type PlanItem = {
   songId?: string | null
   song?: { id: string; title: string } | null
   content?: string | null
+  notes?: string | null
+  // Champs conservés tels quels à la sauvegarde (ne pas les perdre)
+  refId?: string | null
+  refSubId?: string | null
+  mediaPath?: string | null
+  secondaryContent?: string | null
+  backgroundConfig?: string | null
 }
 
 const KIND_OPTIONS = [
@@ -64,6 +71,24 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
     setItems((prev) => prev.filter((_, i) => i !== idx).map((it, i) => ({ ...it, order: i })))
   }
 
+  function moveItem(idx: number, dir: -1 | 1) {
+    setItems((prev) => {
+      const target = idx + dir
+      if (target < 0 || target >= prev.length) return prev
+      const next = [...prev]
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return next.map((it, i) => ({ ...it, order: i }))
+    })
+  }
+
+  function duplicateItem(idx: number) {
+    setItems((prev) => {
+      const copy = { ...prev[idx], id: undefined }
+      const next = [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)]
+      return next.map((it, i) => ({ ...it, order: i }))
+    })
+  }
+
   function updateItem(idx: number, patch: Partial<PlanItem>) {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)))
   }
@@ -96,11 +121,12 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
 
       const planId = isEdit ? initial!.id : planJson.data.id
 
-      if (items.length > 0) {
+      const payload = items.map(({ id: _id, song: _song, ...it }, i) => ({ ...it, order: i }))
+      if (isEdit || payload.length > 0) {
         const itemsRes = await fetch(`/api/plans/${planId}/items`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: items.map((it, i) => ({ ...it, order: i })) }),
+          body: JSON.stringify({ items: payload }),
         })
         const itemsJson = await itemsRes.json()
         if (!itemsJson.ok) { toast.error(itemsJson.error ?? "Erreur sur les éléments"); return }
@@ -178,7 +204,14 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
                   className="flex items-center gap-2 px-3 py-2"
                   style={{ background: "var(--color-surface-low)", borderBottom: "1px solid var(--color-outline-variant)" }}
                 >
-                  <GripVertical size={13} style={{ color: "var(--color-outline)" }} />
+                  <div className="flex flex-col">
+                    <button type="button" onClick={() => moveItem(idx, -1)} disabled={idx === 0} aria-label="Monter" className="disabled:opacity-30" style={{ color: "var(--color-outline)" }}>
+                      <ChevronUp size={13} />
+                    </button>
+                    <button type="button" onClick={() => moveItem(idx, 1)} disabled={idx === items.length - 1} aria-label="Descendre" className="disabled:opacity-30" style={{ color: "var(--color-outline)" }}>
+                      <ChevronDown size={13} />
+                    </button>
+                  </div>
                   <select
                     value={item.kind}
                     onChange={(e) => updateItem(idx, { kind: e.target.value, songId: undefined, song: undefined })}
@@ -192,7 +225,17 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
                   <span className="ml-auto text-xs" style={{ color: "var(--color-outline)" }}>{idx + 1}</span>
                   <button
                     type="button"
+                    onClick={() => duplicateItem(idx)}
+                    aria-label="Dupliquer l'élément"
+                    style={{ color: "var(--color-outline)" }}
+                    className="transition-colors hover:text-white"
+                  >
+                    <Copy size={13} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => removeItem(idx)}
+                    aria-label="Supprimer l'élément"
                     style={{ color: "var(--color-outline)" }}
                     className="transition-colors hover:text-red-400"
                   >
@@ -271,6 +314,14 @@ export function PlanFormClient({ initial }: { initial?: Initial }) {
                       className="input"
                     />
                   )}
+                  <textarea
+                    value={item.notes ?? ""}
+                    onChange={(e) => updateItem(idx, { notes: e.target.value })}
+                    placeholder="Notes (tonalité, intervenant, consigne…)"
+                    rows={1}
+                    maxLength={2000}
+                    className="input mt-2 text-xs"
+                  />
                 </div>
               </div>
             ))}
