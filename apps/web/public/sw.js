@@ -5,6 +5,8 @@
  *  - Pages /app/* : réseau d'abord (3 s), sinon la dernière version mise en cache, sinon /offline.html.
  *  - Données GET /api/songs|plans (+ fichiers de partitions) : réseau d'abord, sinon cache.
  *  - JAMAIS en cache : /api/auth, /api/users, /login, toute requête non-GET.
+ * Mise à jour : les ressources statiques de l'ancienne version sont reportées dans le nouveau cache avant suppression
+ * (les pages enregistrées « hors-ligne » en dépendent).
  * Les caches contiennent des données de l'utilisateur connecté : ils sont vidés à la déconnexion
  * (message CLEAR_CACHES envoyé par l'application) et peuvent être alimentés explicitement
  * (bouton « Disponible hors-ligne », cache `cp-offline`).
@@ -27,8 +29,25 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keep = new Set([STATIC_CACHE, PAGES_CACHE, DATA_CACHE, OFFLINE_CACHE])
+      const current = await caches.open(STATIC_CACHE)
       for (const name of await caches.keys()) {
-        if (!keep.has(name)) await caches.delete(name)
+        if (keep.has(name)) continue
+        // Mise à jour du service worker : les pages déjà enregistrées « hors-ligne » (cache cp-offline, conservé)
+        // dépendent des scripts, polices et sons de l'ancien cache statique. On les reporte dans le nouveau avant
+        // de supprimer l'ancien, sinon ces pages s'ouvriraient sans pouvoir s'exécuter hors-ligne.
+        if (name.startsWith("cp-static-")) {
+          try {
+            const old = await caches.open(name)
+            for (const request of await old.keys()) {
+              if (await current.match(request)) continue
+              const response = await old.match(request)
+              if (response) await current.put(request, response)
+            }
+          } catch {
+            // report impossible (stockage plein…) : on perd seulement du cache, jamais des données
+          }
+        }
+        await caches.delete(name)
       }
       await self.clients.claim()
     })(),
