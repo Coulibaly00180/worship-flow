@@ -1,5 +1,7 @@
 # Architecture Web — apps/web
 
+> **⚠️ Document historique.** L'application desktop (Electron) a été retirée du projet en novembre 2026 ; le projet est désormais uniquement l'app web pour les chantres et la chorale. Les passages sur le desktop, SQLite et la synchronisation sont obsolètes.
+
 Structure de fichiers, patterns de code et conventions pour l'app Next.js 15.
 
 ---

@@ -69,3 +69,5 @@ apps/**/data/*.db-shm
 apps/**/data/*.db-wal
 apps/**/data/backups
 AGENTS.md
+# Secrets Docker locaux (copier .env.docker.example)
+.env.docker

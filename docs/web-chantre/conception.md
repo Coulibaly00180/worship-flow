@@ -1,5 +1,7 @@
 # Application Web — Chantre
 
+> **⚠️ Document historique.** L'application desktop (Electron) a été retirée du projet en novembre 2026 ; le projet est désormais uniquement l'app web pour les chantres et la chorale. Les passages sur le desktop, SQLite et la synchronisation sont obsolètes.
+
 Document de conception pour l'application web destinée aux chantres de l'église.
 
 ## Contexte
@@ -16,7 +18,7 @@ Les deux applications partagent les données via PostgreSQL comme source de vér
 coupée en cours d'utilisation, le desktop bascule automatiquement sur SQLite.
 Les modifications faites hors ligne sont synchronisées vers PostgreSQL dès la
 reconnexion. En cas de conflit, **PostgreSQL gagne toujours** (toast d'avertissement
-si des données locales sont écrasées). Voir `sync.md` pour le détail.
+si des données locales sont écrasées).
 
 ---
 
@@ -233,9 +235,9 @@ enum LearningStatus {
 
 ### Phase 1 — Fondations
 - Ajout du client PostgreSQL dans l'app desktop (en plus du SQLite existant)
-- Système de sync SQLite ↔ PostgreSQL avec fallback offline (voir `sync.md`)
+- Système de sync SQLite ↔ PostgreSQL avec fallback offline
 - App Next.js avec auth (login, sessions, middleware)
-- Initialisation du schéma PostgreSQL Supabase (voir `migration.md`)
+- Initialisation du schéma PostgreSQL Supabase
 - Gestion des utilisateurs par l'ADMIN
 
 ### Phase 2 — Bibliothèque de chants

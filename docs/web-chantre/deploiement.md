@@ -1,5 +1,7 @@
 # Déploiement — Vercel + Supabase
 
+> **⚠️ Document historique.** L'application desktop (Electron) a été retirée du projet en novembre 2026 ; le projet est désormais uniquement l'app web pour les chantres et la chorale. Les passages sur le desktop, SQLite et la synchronisation sont obsolètes.
+
 Guide complet pour déployer l'app web et maintenir le pipeline CI/CD.
 
 ---
@@ -34,7 +36,7 @@ PostgreSQL Supabase (free tier)
 
 - [ ] Compte Vercel créé et lié au compte GitHub
 - [ ] Dépôt GitHub du monorepo accessible par Vercel
-- [ ] Projet Supabase créé et schéma appliqué (voir `migration.md`)
+- [ ] Projet Supabase créé et schéma appliqué
 - [ ] Domaine avec accès à la zone DNS
 
 ---
@@ -275,7 +277,7 @@ DATABASE_URL_PG="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.su
 ## 8. Checklist de mise en production
 
 ### Avant le premier déploiement
-- [ ] Projet Supabase créé, schéma appliqué via `prisma migrate dev --name "init"` (voir `migration.md`)
+- [ ] Projet Supabase créé, schéma appliqué via `prisma migrate dev --name "init"`
 - [ ] Compte ADMIN créé via `npm run seed:admin`
 - [ ] Variables d'environnement configurées dans Vercel (Transaction Pooler URL)
 - [ ] Domaine custom ajouté dans Vercel + DNS propagé

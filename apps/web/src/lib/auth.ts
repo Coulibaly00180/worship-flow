@@ -1,7 +1,18 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { compare } from "bcryptjs"
+import { compare, hash } from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+import { lockRemaining, recordFailure, recordSuccess } from "@/lib/rateLimit"
+
+// Par IP, seuil plus large que par compte (plusieurs fidèles peuvent partager le même Wi-Fi)
+const IP_MAX_FAILURES = 30
+
+// Hash factice (calculé une fois) pour comparer en temps constant quand le compte n'existe pas
+let dummyHash: Promise<string> | undefined
+function getDummyHash() {
+  dummyHash ??= hash("dummy-password-not-a-secret", 12)
+  return dummyHash
+}
 
 const nextAuth = NextAuth({
   providers: [
@@ -10,10 +21,18 @@ const nextAuth = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Mot de passe", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null
 
-        const login = credentials.email as string
+        const login = (credentials.email as string).trim()
+        const forwarded = request?.headers?.get("x-forwarded-for")
+        const ip = forwarded?.split(",")[0]?.trim() || "unknown"
+        const loginKey = `login:${login.toLowerCase()}`
+        const ipKey = `ip:${ip}`
+
+        // Trop de tentatives : on refuse sans même consulter la base ni comparer le mot de passe
+        if (lockRemaining(loginKey) > 0 || lockRemaining(ipKey) > 0) return null
+
         // Connexion par email ou par pseudo
         const user = await prisma.user.findFirst({
           where: {
@@ -24,10 +43,14 @@ const nextAuth = NextAuth({
           },
         })
 
-        if (!user || !user.isActive) return null
-
-        const valid = await compare(credentials.password as string, user.passwordHash)
-        if (!valid) return null
+        // Compte inconnu : on compare quand même à un hash factice (pas d'énumération par le temps de réponse)
+        const valid = await compare(credentials.password as string, user?.passwordHash ?? (await getDummyHash()))
+        if (!user || !user.isActive || !valid) {
+          recordFailure(loginKey)
+          recordFailure(ipKey, Date.now(), IP_MAX_FAILURES)
+          return null
+        }
+        recordSuccess(loginKey)
 
         await prisma.user.update({
           where: { id: user.id },
