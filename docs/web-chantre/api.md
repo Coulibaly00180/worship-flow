@@ -18,14 +18,15 @@ Routes actuellement implémentées (`apps/web/src/app/api`) :
 | `/api/songs/[id]` | GET, PATCH, DELETE | connecté / `CHANTRE` / `RESPONSABLE_CHANTRE` |
 | `/api/songs/[id]/favorite` | POST, DELETE | connecté |
 | `/api/songs/[id]/learning` | PUT | connecté |
-| `/api/songs/[id]/scores` | GET, POST | connecté / `CHANTRE` — POST multipart (`file` PDF/PNG/JPEG 8 Mo max, type vérifié sur le contenu, `voice`) ou JSON `{ kind: "ABC", title, voice?, abc }` |
-| `/api/songs/[id]/scores/[scoreId]` | GET, PATCH, DELETE | connecté / `CHANTRE` — PATCH : `title`, `voice`, `position`, `abc` (ABC uniquement) ; GET d'une partition ABC renvoie le texte |
+| `/api/songs/[id]/scores` | GET, POST | connecté / `CHANTRE` — POST multipart (`file` PDF/PNG/JPEG 8 Mo max, type vérifié sur le contenu, `voice`) ou JSON `{ kind: "YAML", title, voice?, source }` (compilé côté serveur, 400 avec message lisible si invalide) ou `{ kind: "ABC", title, voice?, abc }` |
+| `/api/songs/[id]/scores/[scoreId]` | GET, PATCH, DELETE | connecté / `CHANTRE` — PATCH : `title`, `voice`, `position`, `source` (YAML, recompilé) ou `abc` (ABC) ; GET d'une partition ABC renvoie le texte |
 | `/api/songs/import`, `/api/songs/import/confirm` | POST | `CHANTRE` |
 | `/api/plans` | GET, POST | connecté / `RESPONSABLE_CHANTRE` |
 | `/api/plans/[id]` | GET, PATCH, DELETE | connecté / `RESPONSABLE_CHANTRE` |
 | `/api/plans/[id]/items` | PUT | `RESPONSABLE_CHANTRE` (remplace tous les éléments, notes et médias conservés) |
 | `/api/plans/[id]/duplicate` | POST | `RESPONSABLE_CHANTRE` — corps `{ date, title? }`, 409 si la date est prise |
 | `/api/users` | GET, POST | `RESPONSABLE_CHANTRE` |
+| `/api/users/me/appearance` | GET, PUT | connecté — réglages d'apparence synchronisés (la copie la plus récente gagne ; horodatage futur borné ; valeurs hors liste refusées) |
 | `/api/users/[id]` | PATCH, DELETE | soi-même ou gestionnaire (rang strictement supérieur) / `ADMIN` |
 
 Règles utilisateurs : mot de passe, email et nom d'un autre compte = `ADMIN` seulement ; rôle et activation = `ADMIN` ;

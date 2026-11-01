@@ -1,14 +1,54 @@
 # Partitions, recherche, mode lecture et hors-ligne
 
 ## Partitions
-Deux types, dans la table `SongScore` :
+Trois types, dans la table `SongScore` :
 
 | Type | Contenu | Stockage |
 |------|---------|----------|
 | `FILE` | PDF, PNG ou JPEG (8 Mo max). Le type est détecté sur les octets du fichier, pas sur l'extension. | colonne `data` (BYTEA) |
-| `ABC` | Partition saisie dans l'application en **notation ABC** (100 000 caractères max) | colonne `abc` (texte) |
+| `YAML` | Partition **écrite en solfège** dans un YAML (50 000 caractères max), compilée en ABC | `source` (ce que l'utilisateur a saisi) + `abc` (résultat compilé) |
+| `ABC` | Partition saisie en **notation ABC** (100 000 caractères max), pour les utilisateurs avancés | colonne `abc` (texte) |
 
 Chaque partition a une **voix** (`ALL`, `SOPRANO`, `ALTO`, `TENOR`, `BASSE`, `ACCOMPAGNEMENT`) et une position.
+
+## Écrire une partition en solfège (YAML)
+Le format recommandé : on écrit les notes avec leurs noms (`do ré mi fa sol la si`), le serveur les compile en ABC, qui est ensuite rendu,
+transposé et mis hors-ligne comme n'importe quelle partition. Le **serveur recompile toujours lui-même** à l'enregistrement
+(il ignore tout ABC « précompilé » envoyé par le navigateur) ; l'aperçu en direct utilise le même compilateur (`src/lib/scoreYaml.ts`).
+
+```yaml
+titre: Grâce infinie
+compositeur: Équipe louange
+tonalite: Sol          # Do, Ré, Mi, Fa, Sol, La, Si — « m » pour mineur : Rém, La mineur
+mesure: 4/4
+tempo: 90
+unite: 1/4             # durée d'une note écrite sans chiffre
+voix:
+  - nom: Soprano
+    notes: |
+      sol la si do' | ré'2 do'2 |
+      si la sol2 |]
+    paroles: |
+      Gra- ce in- fi- nie
+      tu me re- lè- ves
+  - nom: Basse            # clé de fa choisie automatiquement
+    notes: sol,, la,, si,, do, | ré,2 do,2 |]
+```
+
+| Élément | Écriture |
+|---------|----------|
+| Notes | `do ré mi fa sol la si` (accents et majuscules libres) ou `C D E F G A B` |
+| Octave | `do` = do central ; `do'` = au-dessus ; `do,` = en dessous (répétable : `do''`, `do,,`) |
+| Altérations | `fa#` dièse, `sib` bémol, `fa=` bécarre, `fa##`, `sibb` ; la tonalité s'applique d'elle-même |
+| Durées | `sol2` (2 unités), `sol/2` (moitié), `sol3/2`, liaison `sol2-` ; silence `z`, `z2` |
+| Barres | `\|`, `\|\|`, `\|]`, `\|:`, `:\|`, volta `\|1` (collées ou séparées des notes) |
+| Voix | liste (`- nom:`) ou dictionnaire (`Soprano:`) ; Soprano/Alto → clé de sol, Ténor → sol 8vb, Basse → clé de fa ; surcharge `cle:` |
+| Paroles | syllabes coupées par `-` ; plusieurs couplets = une liste ; alignées ligne à ligne si autant de lignes que les notes |
+
+Erreurs : chaque problème est signalé en français avec la voix et le jeton fautif (« Voix « Alto » : « fax » n'est pas une note valide… »),
+ou la ligne pour une erreur de syntaxe YAML ; l'enregistrement est bloqué tant qu'il en reste. Les clés inconnues donnent un avertissement
+(faute de frappe probable). Sécurité : titre/compositeur/paroles ne peuvent pas injecter de champs ABC (retours à la ligne neutralisés),
+le caractère `%` (commentaire ABC) est remplacé, les alias YAML sont limités (anti « billion laughs »).
 
 **Pourquoi ABC et pas un éditeur graphique ?** Il n'existe pas d'éditeur de partition WYSIWYG open source, léger et intégrable
 dans une page web. L'ABC est un format texte standard : stockable en base, versionnable, transposable, rendu par

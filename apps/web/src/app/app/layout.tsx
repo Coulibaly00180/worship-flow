@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { SideNav, MobileTopBar, BottomNav } from "@/components/layout/SideNav"
+import { AppearanceSync } from "@/components/layout/AppearanceSync"
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -20,6 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-dvh" style={{ background: "var(--color-bg)" }}>
+      <AppearanceSync userId={session.user.id} />
       <a href="#contenu" className="skip-link">Aller au contenu</a>
       <SideNav user={user} />
       <MobileTopBar user={user} />

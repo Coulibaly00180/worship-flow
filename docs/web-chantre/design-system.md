@@ -32,7 +32,7 @@ Les partitions s'affichent toujours en noir sur blanc (`--color-paper`), même e
 - Aucune requête vers Google Fonts : les fichiers sont dans `src/app/fonts`.
 
 ## Personnalisation (Profil → Personnaliser l'interface)
-Réglages **propres à l'appareil** (stockés dans le navigateur, appliqués tout de suite, sans « flash » au chargement grâce à un script d'initialisation) :
+Réglages **synchronisés entre vos appareils** : mémorisés dans le navigateur (appliqués tout de suite, sans « flash » grâce à un script d'initialisation, et fonctionnels hors-ligne) puis envoyés au compte (`User.uiPrefs`, `/api/users/me/appearance`) :
 
 | Réglage | Choix | Mécanisme |
 |---------|-------|-----------|
@@ -45,7 +45,10 @@ Réglages **propres à l'appareil** (stockés dans le navigateur, appliqués tou
 Garde-fous : un test vérifie le **contraste WCAG AA (≥ 4,5:1)** de chaque accent en clair et en sombre (texte du bouton, survol,
 accent en texte, conteneur) et que `accents.css` est synchronisé avec `accents.json`. Toute valeur stockée inconnue ou altérée retombe sur le défaut.
 Pour ajouter un accent : l'ajouter dans `accents.json`, lancer le générateur, lancer les tests.
-Les réglages du mode lecture (taille, thème, vitesse) restent séparés (`src/lib/readPrefs.ts`).
+**Synchronisation** (`components/layout/AppearanceSync.tsx`, `lib/appearanceSync.ts`) : à l'ouverture, la copie la plus récente entre l'appareil et le serveur gagne
+(horodatage de la dernière modification volontaire) ; chaque modification est envoyée après 800 ms. Sans réseau tout continue en local et se resynchronise ensuite.
+Les réglages locaux appartiennent au compte qui les a créés : sur un appareil partagé, un autre compte ne les récupère jamais et ils ne sont jamais envoyés à son nom.
+« Rétablir » (thème compris) se synchronise aussi. Les réglages du mode lecture (taille, thème, vitesse) restent propres à l'appareil (`src/lib/readPrefs.ts`).
 
 ## Dialogues
 Composant `Modal` (`src/components/ui/Modal.tsx`) : rôle `dialog` + `aria-modal`, focus placé à l'ouverture, **focus piégé** (Tab / Maj+Tab),

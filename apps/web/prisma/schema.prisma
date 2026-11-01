@@ -87,7 +87,7 @@ model ServiceItem {
 model SongScore {
   id           String   @id @default(cuid())
   songId       String
-  // FILE = PDF/PNG/JPEG (data) ; ABC = partition saisie en notation ABC (abc)
+  // FILE = PDF/PNG/JPEG (data) ; ABC = notation ABC saisie (abc) ; YAML = solfège en YAML (source) compilé en ABC (abc)
   kind         String   @default("FILE")
   // ALL, SOPRANO, ALTO, TENOR, BASSE, ACCOMPAGNEMENT
   voice        String   @default("ALL")
@@ -97,6 +97,8 @@ model SongScore {
   size         Int
   data         Bytes?
   abc          String?
+  // Source saisie par l'utilisateur pour les partitions "YAML" (le champ abc contient alors le résultat compilé)
+  source       String?
   uploadedById String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
@@ -119,6 +121,8 @@ model User {
   role         UserRole  @default(CHANTRE)
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
+  // Réglages d'apparence synchronisés entre appareils (JSON : { appearance, theme, updatedAt })
+  uiPrefs      String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 

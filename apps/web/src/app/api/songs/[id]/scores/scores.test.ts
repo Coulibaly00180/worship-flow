@@ -79,7 +79,7 @@ describe("scores API", () => {
 
   it("sert le fichier avec le bon type et nosniff", async () => {
     mockPrisma.songScore.findFirst.mockResolvedValue({
-      id: "sc1", filename: "é.pdf", mimeType: "application/pdf", size: 8, data: Buffer.from(PDF),
+      id: "sc1", kind: "FILE", filename: "é.pdf", mimeType: "application/pdf", size: 8, data: Buffer.from(PDF),
     })
     const res = await GET_ONE(new Request("http://x"), oneParams)
     expect(res.status).toBe(200)
@@ -157,5 +157,62 @@ describe("scores API", () => {
     const res = await GET_ONE(new Request("http://x"), oneParams)
     expect(res.headers.get("content-type")).toContain("text/plain")
     expect(await res.text()).toBe("X:1")
+  })
+
+  describe("partitions écrites en YAML (solfège)", () => {
+    const post = (body: unknown) =>
+      POST(new Request("http://x", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }), params)
+    const YAML = "titre: T\ntonalite: Sol\nnotes: sol la si do'\nparoles: a b c d"
+
+    it("compile côté serveur et enregistre la source ET l'ABC", async () => {
+      const res = await post({ kind: "YAML", title: "Soprano", voice: "SOPRANO", source: YAML })
+      expect(res.status).toBe(201)
+      const data = mockPrisma.songScore.create.mock.calls.at(-1)?.[0].data
+      expect(data).toMatchObject({ kind: "YAML", source: YAML, voice: "SOPRANO", mimeType: "text/vnd.abc" })
+      expect(data.abc).toContain("K:G")
+      expect(data.abc).toContain("G A B c")
+    })
+
+    it("400 avec un message lisible si le YAML est invalide (rien n'est enregistré)", async () => {
+      mockPrisma.songScore.create.mockClear()
+      const res = await post({ kind: "YAML", title: "X", source: "notes: do fax mi" })
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toContain("fax")
+      expect(mockPrisma.songScore.create).not.toHaveBeenCalled()
+    })
+
+    it("ignore un ABC envoyé avec kind YAML (jamais de contenu précompilé par le client)", async () => {
+      const res = await post({ kind: "YAML", title: "X", abc: "X:1\nK:C\nCDEF|", source: YAML })
+      expect(res.status).toBe(201)
+      expect(mockPrisma.songScore.create.mock.calls.at(-1)?.[0].data.abc).not.toBe("X:1\nK:C\nCDEF|")
+    })
+
+    it("PATCH source : recompile et met à jour l'ABC", async () => {
+      mockPrisma.songScore.findFirst.mockResolvedValue({ id: "sc1", kind: "YAML" })
+      mockPrisma.songScore.update.mockResolvedValue({ id: "sc1" })
+      const res = await PATCH(new Request("http://x", { method: "PATCH", body: JSON.stringify({ source: "tonalite: Rém\nnotes: ré mi fa" }) }), oneParams)
+      expect(res.status).toBe(200)
+      const data = mockPrisma.songScore.update.mock.calls.at(-1)?.[0].data
+      expect(data.source).toBe("tonalite: Rém\nnotes: ré mi fa")
+      expect(data.abc).toContain("K:Dm")
+    })
+
+    it("PATCH : refuse source sur une partition ABC, abc sur une partition YAML, et un YAML invalide", async () => {
+      mockPrisma.songScore.update.mockClear()
+      const patch = (body: unknown) => PATCH(new Request("http://x", { method: "PATCH", body: JSON.stringify(body) }), oneParams)
+      mockPrisma.songScore.findFirst.mockResolvedValue({ id: "sc1", kind: "ABC" })
+      expect((await patch({ source: "notes: do" })).status).toBe(400)
+      mockPrisma.songScore.findFirst.mockResolvedValue({ id: "sc1", kind: "YAML" })
+      expect((await patch({ abc: "X:1\nK:C\nC" })).status).toBe(400)
+      expect((await patch({ source: "notes: do zzz" })).status).toBe(400)
+      expect(mockPrisma.songScore.update).not.toHaveBeenCalled()
+    })
+
+    it("GET d'une partition YAML renvoie l'ABC compilé en texte", async () => {
+      mockPrisma.songScore.findFirst.mockResolvedValue({ id: "sc1", kind: "YAML", abc: "X:1\nK:G", source: "notes: sol", data: null })
+      const res = await GET_ONE(new Request("http://x"), oneParams)
+      expect(res.headers.get("content-type")).toContain("text/plain")
+      expect(await res.text()).toBe("X:1\nK:G")
+    })
   })
 })

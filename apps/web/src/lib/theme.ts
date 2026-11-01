@@ -1,11 +1,12 @@
 "use client"
 
 import { useCallback, useSyncExternalStore } from "react"
+import { touchLocal } from "@/lib/syncMeta"
 
 export type Theme = "system" | "light" | "dark"
 
 const KEY = "cp-theme"
-const EVENT = "cp-theme-change"
+export const THEME_EVENT = "cp-theme-change"
 
 // Repli en mémoire si le stockage est indisponible (navigation privée…)
 let memory: Theme = "system"
@@ -14,7 +15,7 @@ function normalize(v: unknown): Theme {
   return v === "light" || v === "dark" ? v : "system"
 }
 
-function read(): Theme {
+export function readTheme(): Theme {
   try {
     return normalize(window.localStorage.getItem(KEY) ?? memory)
   } catch {
@@ -24,10 +25,10 @@ function read(): Theme {
 
 function subscribe(cb: () => void) {
   window.addEventListener("storage", cb)
-  window.addEventListener(EVENT, cb)
+  window.addEventListener(THEME_EVENT, cb)
   return () => {
     window.removeEventListener("storage", cb)
-    window.removeEventListener(EVENT, cb)
+    window.removeEventListener(THEME_EVENT, cb)
   }
 }
 
@@ -38,20 +39,25 @@ export function applyTheme(theme: Theme) {
   else root.setAttribute("data-theme", theme)
 }
 
+/**
+ * Enregistre et applique le thème. `remote: true` = valeur reçue du serveur : on ne marque pas
+ * de modification locale et l'écouteur de synchronisation n'a rien à renvoyer.
+ */
+export function writeTheme(next: Theme, opts?: { remote?: boolean }) {
+  memory = next
+  try {
+    if (next === "system") window.localStorage.removeItem(KEY)
+    else window.localStorage.setItem(KEY, next)
+  } catch {
+    // ignoré : repli sur la mémoire
+  }
+  applyTheme(next)
+  if (!opts?.remote) touchLocal()
+  window.dispatchEvent(new CustomEvent(THEME_EVENT, { detail: { remote: !!opts?.remote } }))
+}
+
 export function useTheme(): [Theme, (t: Theme) => void] {
-  const theme = useSyncExternalStore(subscribe, read, () => "system" as Theme)
-
-  const setTheme = useCallback((next: Theme) => {
-    memory = next
-    try {
-      if (next === "system") window.localStorage.removeItem(KEY)
-      else window.localStorage.setItem(KEY, next)
-    } catch {
-      // ignoré : repli sur la mémoire
-    }
-    applyTheme(next)
-    window.dispatchEvent(new Event(EVENT))
-  }, [])
-
+  const theme = useSyncExternalStore(subscribe, readTheme, () => "system" as Theme)
+  const setTheme = useCallback((next: Theme) => writeTheme(next), [])
   return [theme, setTheme]
 }

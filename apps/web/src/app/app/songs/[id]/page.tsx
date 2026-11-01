@@ -51,7 +51,7 @@ export default async function SongDetailPage({ params }: Props) {
       learnings: { where: { userId: session.user.id }, select: { status: true } },
       scores: {
         orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-        select: { id: true, kind: true, voice: true, filename: true, mimeType: true, size: true, abc: true },
+        select: { id: true, kind: true, voice: true, filename: true, mimeType: true, size: true, abc: true, source: true },
       },
     },
   })
@@ -108,7 +108,7 @@ export default async function SongDetailPage({ params }: Props) {
             </Link>
           )}
           <OfflineButton
-            withAbc={song.scores.some((sc) => sc.kind === "ABC")}
+            withAbc={song.scores.some((sc) => sc.kind !== "FILE")}
             urls={[
               `/app/songs/${song.id}`,
               `/app/songs/${song.id}/read`,

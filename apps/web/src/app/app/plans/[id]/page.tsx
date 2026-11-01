@@ -137,7 +137,7 @@ export default async function PlanDetailPage({ params }: Props) {
             </Link>
           )}
           <PlanActions planId={plan.id} canManage={canManage} />
-          <OfflineButton urls={offlineUrls} withAbc={plan.items.some((it) => it.song?.scores.some((sc) => sc.kind === "ABC"))} />
+          <OfflineButton urls={offlineUrls} withAbc={plan.items.some((it) => it.song?.scores.some((sc) => sc.kind !== "FILE"))} />
         </div>
       </header>
 

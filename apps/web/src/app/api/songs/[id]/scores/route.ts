@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { canEditSongs } from "@/lib/roles"
 import { MAX_ABC_CHARS, MAX_SCORE_BYTES, VOICES, detectScoreType, isVoice, sanitizeFilename } from "@/lib/scoreFile"
+import { MAX_YAML_CHARS, compileYamlScore } from "@/lib/scoreYaml"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -14,8 +15,17 @@ const AbcSchema = z.object({
   abc: z.string().min(1, "Partition vide").max(MAX_ABC_CHARS, "Partition trop longue"),
 })
 
+const YamlSchema = z.object({
+  kind: z.literal("YAML"),
+  title: z.string().trim().min(1, "Titre requis").max(120),
+  voice: z.enum(VOICES).default("ALL"),
+  source: z.string().min(1, "Partition vide").max(MAX_YAML_CHARS, "Partition trop longue"),
+})
+
+const WrittenSchema = z.discriminatedUnion("kind", [AbcSchema, YamlSchema])
+
 const SELECT = {
-  id: true, kind: true, voice: true, position: true, filename: true, mimeType: true, size: true, abc: true, createdAt: true,
+  id: true, kind: true, voice: true, position: true, filename: true, mimeType: true, size: true, abc: true, source: true, createdAt: true,
 } as const
 
 export async function GET(_req: Request, { params }: Params) {
@@ -63,21 +73,37 @@ export async function POST(req: Request, { params }: Params) {
     } catch {
       return NextResponse.json({ ok: false, error: "JSON invalide" }, { status: 400 })
     }
-    const parsed = AbcSchema.safeParse(body)
+    const parsed = WrittenSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Données invalides" }, { status: 400 })
     }
-    const { title, voice, abc } = parsed.data
+    const data = parsed.data
+
+    // YAML : le serveur recompile lui-même (on ne fait jamais confiance à un ABC « précompilé » par le client)
+    let abc: string
+    let source: string | null = null
+    if (data.kind === "YAML") {
+      const result = compileYamlScore(data.source)
+      if (!result.ok) {
+        return NextResponse.json({ ok: false, error: result.errors.join(" ") }, { status: 400 })
+      }
+      abc = result.abc
+      source = data.source
+    } else {
+      abc = data.abc
+    }
+
     const score = await prisma.songScore.create({
       data: {
         songId: id,
-        kind: "ABC",
-        voice,
+        kind: data.kind,
+        voice: data.voice,
         position,
-        filename: title,
+        filename: data.title,
         mimeType: "text/vnd.abc",
         size: Buffer.byteLength(abc, "utf8"),
         abc,
+        source,
         uploadedById: session.user.id,
       },
       select: SELECT,

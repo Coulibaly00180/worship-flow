@@ -166,7 +166,7 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
                 <option key={s.id} value={s.id} className="text-black">{s.filename} — {VOICE_LABEL[s.voice as Voice] ?? s.voice}</option>
               ))}
             </select>
-            {score.kind === "ABC" && (
+            {score.kind !== "FILE" && (
               <span className="flex items-center gap-1">
                 <span className={muted}>Transposition</span>
                 <button type="button" aria-label="Baisser d'un demi-ton" onClick={() => setTranspose((t) => Math.max(-12, t - 1))} className={`w-7 h-7 rounded-md flex items-center justify-center ${btn}`}><Minus size={12} /></button>
@@ -175,7 +175,7 @@ export function ReadModeClient({ song, scores = [] }: { song: Song; scores?: Sco
               </span>
             )}
           </div>
-          {score.kind === "ABC" ? (
+          {score.kind !== "FILE" ? (
             <AbcScore abc={score.abc ?? ""} transpose={transpose} />
           ) : score.mimeType === "application/pdf" ? (
             <iframe title={score.filename} src={`/api/songs/${song.id}/scores/${score.id}`} className="w-full bg-white rounded-md" style={{ height: "calc(100vh - 150px)" }} />
