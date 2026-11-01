@@ -7,9 +7,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @cp/desktop",
-    "build": "npm run build -w @cp/desktop",
-    "dist:win": "npm run dist:win -w @cp/desktop",
+    "dev": "npm run dev -w @cp/web",
+    "build": "npm run build -w @cp/web",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",

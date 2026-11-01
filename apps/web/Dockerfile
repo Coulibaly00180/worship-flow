@@ -9,8 +9,7 @@ RUN apk add --no-cache openssl
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/
 
-# Install uniquement le workspace @cp/web (--ignore-scripts pour éviter
-# les postinstall Electron du workspace desktop)
+# Install uniquement le workspace @cp/web (--ignore-scripts, le client Prisma est généré ensuite)
 RUN npm ci --workspace=apps/web --ignore-scripts
 
 # Génération du client Prisma

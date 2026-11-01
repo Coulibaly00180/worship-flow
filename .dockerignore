@@ -1,21 +1,12 @@
 # Dépendances (reconstruites dans le build)
 node_modules
 apps/web/node_modules
-apps/desktop/node_modules
 
 # Artefacts de build
 apps/web/.next
-apps/desktop/dist
-apps/desktop/out
-apps/desktop/build
-apps/desktop/release
 
-# Application desktop — non nécessaire pour l'image web
-apps/desktop/src
-apps/desktop/resources
 
 # Fichiers de données locaux
-apps/desktop/data
 apps/web/prisma/dev.db*
 
 # Fichiers d'environnement

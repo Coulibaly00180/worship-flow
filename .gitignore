@@ -65,7 +65,6 @@ apps/**/.turbo
 apps/**/.pnp.cjs
 apps/**/.pnp.loader.mjs
 apps/data/app.db
-apps/desktop/data/app.db
 apps/**/data/*.db
 apps/**/data/*.db-shm
 apps/**/data/*.db-wal

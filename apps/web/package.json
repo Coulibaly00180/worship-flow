@@ -17,7 +17,6 @@
     "prisma:studio": "prisma studio",
     "seed": "ts-node --esm prisma/seed/index.ts",
     "seed:admin": "ts-node --esm prisma/seed/seed-admin.ts",
-    "import:sqlite": "tsx prisma/seed/import-sqlite.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
