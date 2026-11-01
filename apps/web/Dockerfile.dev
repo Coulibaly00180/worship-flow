@@ -13,14 +13,13 @@ RUN npm ci --workspace=apps/web --ignore-scripts
 
 # Copie des sources dans apps/web/ — les volumes montent par-dessus en dev
 COPY apps/web/prisma ./apps/web/prisma/
+COPY apps/web/prisma.config.ts ./apps/web/
 COPY apps/web/src ./apps/web/src/
 COPY apps/web/next.config.ts apps/web/tsconfig.json apps/web/postcss.config.mjs ./apps/web/
-
-# Génération du client Prisma (depuis apps/web pour que le chemin output soit correct)
-RUN cd apps/web && npx prisma generate
 
 WORKDIR /workspace/apps/web
 
 EXPOSE 3000
 
-CMD ["../../node_modules/.bin/next", "dev", "--turbopack", "--hostname", "0.0.0.0"]
+# Le client Prisma est généré au démarrage : ./apps/web/src est monté par-dessus l'image en dev.
+CMD ["sh", "-c", "../../node_modules/.bin/prisma generate && ../../node_modules/.bin/next dev --turbopack --hostname 0.0.0.0"]

@@ -9,7 +9,6 @@ CLAUDE.md
 
 # Windows artifact when shell redirects to /dev/null
 nul
-/src/generated/prisma
 /data/app.db
 /data/dev.db
 /data/test.db

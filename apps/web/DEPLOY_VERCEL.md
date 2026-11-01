@@ -172,7 +172,7 @@ Pour une équipe multi-utilisateurs en production, le plan **Pro** ($20/mois) es
 ### `NEXTAUTH_URL` manquant
 → Les redirects de connexion échouent en production si `NEXTAUTH_URL` n't est pas défini exactement avec le bon domaine (pas de slash final).
 
-### Erreur `Cannot find module '.prisma/client'`
+### Erreur `Cannot find module '@/generated/prisma/client'`
 → S'assurer que `npx prisma generate` tourne **avant** `next build` dans la Build Command.
 
 ### Fichiers statiques (images, polices)

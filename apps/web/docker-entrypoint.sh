@@ -3,7 +3,7 @@ set -e
 
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   echo "Applying database migrations..."
-  prisma migrate deploy --schema=./prisma/schema.prisma
+  prisma migrate deploy --config=./prisma.config.ts
 else
   echo "Skipping database migrations."
 fi
