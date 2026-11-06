@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma"
 import { canEditSongs } from "@/lib/roles"
 import { MAX_ABC_CHARS, VOICES } from "@/lib/scoreFile"
 import { MAX_YAML_CHARS, compileYamlScore } from "@/lib/scoreYaml"
+import { deleteScoreObject, getScoreObject } from "@/lib/scoreStorage"
+import { jsonError } from "@/lib/http"
 
 type Params = { params: Promise<{ id: string; scoreId: string }> }
 
@@ -21,8 +23,22 @@ export async function GET(_req: Request, { params }: Params) {
   if (!session) return NextResponse.json({ ok: false, error: "Non authentifié" }, { status: 401 })
 
   const { id, scoreId } = await params
-  const score = await prisma.songScore.findFirst({ where: { id: scoreId, songId: id } })
+  const score = await prisma.songScore.findFirst({ where: { id: scoreId, songId: id, song: { deletedAt: null } } })
   if (!score) return NextResponse.json({ ok: false, error: "Partition introuvable" }, { status: 404 })
+
+  const fileHeaders = {
+    "Content-Type": score.mimeType,
+    "Content-Length": String(score.size),
+    "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(score.filename)}`,
+    "X-Content-Type-Options": "nosniff",
+    "Cache-Control": "private, max-age=3600",
+  }
+
+  if (score.kind === "FILE" && score.storageKey) {
+    const body = await getScoreObject(score.storageKey)
+    if (!body) return jsonError("Fichier de partition introuvable dans le stockage", 404)
+    return new Response(body, { headers: fileHeaders })
+  }
 
   if (score.kind !== "FILE" || !score.data) {
     return new Response(score.abc ?? "", {
@@ -34,15 +50,7 @@ export async function GET(_req: Request, { params }: Params) {
     })
   }
 
-  return new Response(new Uint8Array(score.data), {
-    headers: {
-      "Content-Type": score.mimeType,
-      "Content-Length": String(score.size),
-      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(score.filename)}`,
-      "X-Content-Type-Options": "nosniff",
-      "Cache-Control": "private, max-age=3600",
-    },
-  })
+  return new Response(new Uint8Array(score.data), { headers: fileHeaders })
 }
 
 /** Modifie le titre, la voix, l'ordre ou (partitions ABC uniquement) le contenu. */
@@ -110,7 +118,10 @@ export async function DELETE(_req: Request, { params }: Params) {
   }
 
   const { id, scoreId } = await params
+  const score = await prisma.songScore.findFirst({ where: { id: scoreId, songId: id }, select: { storageKey: true } })
+  if (!score) return jsonError("Partition introuvable", 404)
   const { count } = await prisma.songScore.deleteMany({ where: { id: scoreId, songId: id } })
-  if (count === 0) return NextResponse.json({ ok: false, error: "Partition introuvable" }, { status: 404 })
+  if (count === 0) return jsonError("Partition introuvable", 404)
+  if (score.storageKey) await deleteScoreObject(score.storageKey)
   return NextResponse.json({ ok: true, data: { id: scoreId } })
 }

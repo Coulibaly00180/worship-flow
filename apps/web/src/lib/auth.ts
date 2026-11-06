@@ -2,10 +2,15 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { compare, hash } from "bcryptjs"
 import { prisma } from "@/lib/prisma"
-import { lockRemaining, recordFailure, recordSuccess } from "@/lib/rateLimit"
+import { MAX_FAILURES, lockRemaining, recordFailure, recordSuccess } from "@/lib/rateLimit"
+import { clientIp } from "@/lib/clientIp"
 
-// Par IP, seuil plus large que par compte (plusieurs fidèles peuvent partager le même Wi-Fi)
+// Trois compteurs complémentaires :
+//  - compte + IP (5 échecs) : bloque un attaquant sans verrouiller le vrai titulaire du compte depuis chez lui ;
+//  - IP seule (30) : plus large, plusieurs fidèles peuvent partager le même Wi-Fi ;
+//  - compte seul (50) : plafond contre une attaque répartie sur beaucoup d'adresses.
 const IP_MAX_FAILURES = 30
+const ACCOUNT_MAX_FAILURES = 50
 
 // Hash factice (calculé une fois) pour comparer en temps constant quand le compte n'existe pas
 let dummyHash: Promise<string> | undefined
@@ -25,19 +30,22 @@ const nextAuth = NextAuth({
         if (!credentials?.email || !credentials?.password) return null
 
         const login = (credentials.email as string).trim()
-        const forwarded = request?.headers?.get("x-forwarded-for")
-        const ip = forwarded?.split(",")[0]?.trim() || "unknown"
-        const loginKey = `login:${login.toLowerCase()}`
+        if (login.length > 200 || (credentials.password as string).length > 200) return null
+        const ip = clientIp(request?.headers)
+        const account = login.toLowerCase()
+        const pairKey = `pair:${account}|${ip}`
+        const accountKey = `login:${account}`
         const ipKey = `ip:${ip}`
 
         // Trop de tentatives : on refuse sans même consulter la base ni comparer le mot de passe
-        if (lockRemaining(loginKey) > 0 || lockRemaining(ipKey) > 0) return null
+        const locks = await Promise.all([lockRemaining(pairKey), lockRemaining(accountKey), lockRemaining(ipKey)])
+        if (locks.some((ms) => ms > 0)) return null
 
-        // Connexion par email ou par pseudo
+        // Connexion par email (sans tenir compte de la casse) ou par pseudo
         const user = await prisma.user.findFirst({
           where: {
             OR: [
-              { email: login },
+              { email: { equals: login, mode: "insensitive" } },
               { username: login },
             ],
           },
@@ -46,11 +54,16 @@ const nextAuth = NextAuth({
         // Compte inconnu : on compare quand même à un hash factice (pas d'énumération par le temps de réponse)
         const valid = await compare(credentials.password as string, user?.passwordHash ?? (await getDummyHash()))
         if (!user || !user.isActive || !valid) {
-          recordFailure(loginKey)
-          recordFailure(ipKey, Date.now(), IP_MAX_FAILURES)
+          const now = Date.now()
+          await Promise.all([
+            recordFailure(pairKey, now, MAX_FAILURES),
+            recordFailure(accountKey, now, ACCOUNT_MAX_FAILURES),
+            recordFailure(ipKey, now, IP_MAX_FAILURES),
+          ])
           return null
         }
-        recordSuccess(loginKey)
+        // Le compteur par IP n'est pas remis à zéro : il protège aussi les autres comptes
+        await Promise.all([recordSuccess(pairKey), recordSuccess(accountKey)])
 
         await prisma.user.update({
           where: { id: user.id },
@@ -65,6 +78,7 @@ const nextAuth = NextAuth({
           username: user.username,
           firstName: user.firstName,
           lastName: user.lastName,
+          sessionVersion: user.sessionVersion,
         }
       },
     }),
@@ -72,8 +86,9 @@ const nextAuth = NextAuth({
   callbacks: {
     jwt({ token, user }) {
       if (user) {
-        const u = user as { id?: string; role?: string; username?: string; firstName?: string; lastName?: string }
+        const u = user as { id?: string; role?: string; username?: string; firstName?: string; lastName?: string; sessionVersion?: number }
         token.id = u.id
+        token.sv = u.sessionVersion ?? 0
         token.role = u.role
         token.username = u.username
         token.firstName = u.firstName
@@ -92,10 +107,13 @@ const nextAuth = NextAuth({
         if (token.id) {
           const fresh = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { username: true, firstName: true, lastName: true, name: true, isActive: true, role: true },
+            select: { username: true, firstName: true, lastName: true, name: true, isActive: true, role: true, sessionVersion: true },
           })
-          if (!fresh || !fresh.isActive) {
-            // Compte désactivé ou supprimé — session invalidée (auth() renverra null)
+          // Jetons émis avant l'ajout de la version de session : considérés comme version 0
+          const tokenVersion = typeof token.sv === "number" ? token.sv : 0
+          if (!fresh || !fresh.isActive || fresh.sessionVersion !== tokenVersion) {
+            // Compte désactivé ou supprimé, ou mot de passe changé depuis la connexion :
+            // session invalidée (auth() renverra null)
             return { ...session, user: { ...session.user, id: "", role: "" } }
           }
           // Le rôle est relu en base : une rétrogradation s'applique immédiatement

@@ -24,7 +24,7 @@ function makeResponsable() {
 
 const basePlan = {
   id: "plan-1", date: new Date("2026-05-01"), title: "Culte dominical",
-  backgroundConfig: null, deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
+  deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
   _count: { items: 3 },
 }
 
@@ -77,6 +77,22 @@ describe("POST /api/plans", () => {
     mockAuth.mockResolvedValue(makeResponsable())
     const res = await POST(makeReq(validPayload))
     expect(res.status).toBe(201)
+  })
+
+  it("retourne 400 (et non 500) sur un JSON invalide", async () => {
+    mockAuth.mockResolvedValue(makeResponsable())
+    const res = await POST(new Request("http://localhost/api/plans", { method: "POST", body: "{x" }))
+    expect(res.status).toBe(400)
+  })
+
+  it("retourne 409 (et non 500) si la base refuse la date", async () => {
+    mockAuth.mockResolvedValue(makeResponsable())
+    mockPrisma.servicePlan.findFirst.mockResolvedValue(null)
+    mockPrisma.servicePlan.create.mockRejectedValueOnce(Object.assign(new Error("dup"), { code: "P2002" }))
+    const res = await POST(new Request("http://localhost/api/plans", {
+      method: "POST", body: JSON.stringify({ date: "2026-05-01T10:00:00.000Z" }),
+    }))
+    expect(res.status).toBe(409)
   })
 
   it("retourne 400 si date invalide", async () => {

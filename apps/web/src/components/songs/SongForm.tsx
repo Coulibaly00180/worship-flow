@@ -33,7 +33,7 @@ type Props = {
     id: string
     title: string
     artist?: string | null
-    tags?: string | null
+    tags?: string[] | null
     blocks: { id: string; order: number; type: string; title?: string | null; content: string }[]
   }
 }
@@ -42,19 +42,9 @@ export function SongForm({ initial }: Props) {
   const router = useRouter()
   const isEdit = !!initial
 
-  function parseTags(tags: string | null | undefined): string {
-    if (!tags) return ""
-    try {
-      const arr = JSON.parse(tags)
-      return Array.isArray(arr) ? arr.join(", ") : ""
-    } catch {
-      return ""
-    }
-  }
-
   const [title, setTitle] = useState(initial?.title ?? "")
   const [artist, setArtist] = useState(initial?.artist ?? "")
-  const [tags, setTags] = useState(parseTags(initial?.tags))
+  const [tags, setTags] = useState((initial?.tags ?? []).join(", "))
   const [blocks, setBlocks] = useState<Block[]>(
     initial?.blocks.length
       ? initial.blocks.map((b) => ({
@@ -81,11 +71,6 @@ export function SongForm({ initial }: Props) {
     setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, [field]: value } : b)))
   }
 
-  function tagsToJson(raw: string): string {
-    const arr = raw.split(",").map((t) => t.trim()).filter(Boolean)
-    return JSON.stringify(arr)
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return toast.error("Le titre est requis")
@@ -97,7 +82,8 @@ export function SongForm({ initial }: Props) {
       const payload = {
         title: title.trim(),
         artist: artist.trim() || undefined,
-        tags: tags ? tagsToJson(tags) : undefined,
+        // Toujours envoyé : un champ vidé efface les étiquettes
+        tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         blocks: blocks.map((b, i) => ({
           label: b.label,
           type: b.type,

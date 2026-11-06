@@ -138,3 +138,17 @@ describe("ChangePasswordSchema", () => {
     expect(result.success).toBe(false)
   })
 })
+
+describe("normalizeTags", () => {
+  it("accepte un tableau, l'ancien format JSON et une liste séparée par des virgules", async () => {
+    const { normalizeTags } = await import("./validations")
+    expect(normalizeTags(["Louange", "Noël"])).toEqual(["Louange", "Noël"])
+    expect(normalizeTags('["Louange","Noël"]')).toEqual(["Louange", "Noël"])
+    expect(normalizeTags("Louange, Noël ,")).toEqual(["Louange", "Noël"])
+  })
+  it("retire les vides et les doublons (sans tenir compte de la casse)", async () => {
+    const { normalizeTags } = await import("./validations")
+    expect(normalizeTags(["  ", "Louange", "louange", 3, "Adoration"])).toEqual(["Louange", "Adoration"])
+    expect(normalizeTags("[cassé")).toEqual([])
+  })
+})

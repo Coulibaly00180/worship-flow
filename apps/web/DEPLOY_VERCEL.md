@@ -52,6 +52,10 @@ Dans l'onglet **Environment Variables**, ajoutez :
 | `DATABASE_URL` | `postgresql://postgres:VOTRE_MDP@db.VOTRE_ID.supabase.co:5432/postgres` | Production, Preview, Development |
 | `NEXTAUTH_SECRET` | (clé secrète 32+ chars — générer avec `openssl rand -base64 32`) | Production, Preview, Development |
 | `NEXTAUTH_URL` | `https://votre-domaine.vercel.app` | Production uniquement |
+| `S3_BUCKET` (+ `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`) | bucket privé compatible S3 (Cloudflare R2…) — **recommandé** pour ne pas stocker les PDF dans la base | Production |
+
+> La limitation des tentatives de connexion est stockée dans PostgreSQL (table `LoginThrottle`) : elle fonctionne
+> sur Vercel, où chaque requête peut être servie par une instance différente. Rien à configurer.
 
 > **Important** : `NEXTAUTH_URL` doit être l'URL **finale** de votre app (pas le preview URL). En production, mettez l'URL de votre domaine custom si vous en avez un.
 
@@ -146,7 +150,15 @@ DATABASE_URL="postgresql://postgres:PASSWORD@db.PROJECT_ID.supabase.co:5432/post
 # NextAuth
 NEXTAUTH_SECRET="votre_secret_32_chars_minimum"
 NEXTAUTH_URL="https://votre-app.vercel.app"
+
+# Stockage objet des partitions (optionnel, recommandé)
+S3_BUCKET="worship-flow-scores"
+S3_ENDPOINT="https://ACCOUNT_ID.r2.cloudflarestorage.com"
+S3_ACCESS_KEY_ID="..."
+S3_SECRET_ACCESS_KEY="..."
 ```
+
+Référence complète des variables : `docs/web-chantre/deploiement.md` (section 0 bis).
 
 ---
 

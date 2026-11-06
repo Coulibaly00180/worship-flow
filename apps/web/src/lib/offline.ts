@@ -1,7 +1,7 @@
 /** Cache alimenté à la demande (bouton « Disponible hors-ligne »), lu par le service worker. */
 export const OFFLINE_CACHE = "cp-offline"
 /** Doit rester identique à STATIC_CACHE dans public/sw.js (scripts et styles des pages enregistrées). */
-export const STATIC_CACHE = "cp-static-v2"
+export const STATIC_CACHE = "cp-static-v3"
 
 /** Sons (chœur, piano) hébergés avec l'application : abcjs y charge une note par fichier. */
 export const SOUNDFONT_URL = "/soundfonts/FluidR3_GM/"

@@ -8,20 +8,15 @@ type Params = { params: Promise<{ id: string }> }
 
 const ItemSchema = z.object({
   order: z.number().int().min(0),
-  kind: z.string().min(1),
-  title: z.string().optional().nullable(),
-  content: z.string().optional().nullable(),
-  songId: z.string().optional().nullable(),
+  kind: z.string().min(1).max(30),
+  title: z.string().max(200).optional().nullable(),
+  content: z.string().max(20_000).optional().nullable(),
+  songId: z.string().max(40).optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
-  refId: z.string().optional().nullable(),
-  refSubId: z.string().optional().nullable(),
-  mediaPath: z.string().optional().nullable(),
-  secondaryContent: z.string().optional().nullable(),
-  backgroundConfig: z.string().optional().nullable(),
 })
 
 const BodySchema = z.object({
-  items: z.array(ItemSchema),
+  items: z.array(ItemSchema).max(100, "100 éléments maximum par plan"),
 })
 
 export async function PUT(req: Request, { params }: Params) {
@@ -48,6 +43,15 @@ export async function PUT(req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, error: "Plan introuvable" }, { status: 404 })
   }
 
+  // Un chant inconnu ou supprimé ferait échouer la clé étrangère (500) : on le refuse proprement
+  const songIds = [...new Set(parsed.data.items.map((it) => it.songId).filter((v): v is string => !!v))]
+  if (songIds.length) {
+    const known = await prisma.song.count({ where: { id: { in: songIds }, deletedAt: null } })
+    if (known !== songIds.length) {
+      return NextResponse.json({ ok: false, error: "Chant introuvable dans le plan" }, { status: 400 })
+    }
+  }
+
   const items = await prisma.$transaction(async (tx) => {
     await tx.serviceItem.deleteMany({ where: { planId } })
     return tx.serviceItem.createMany({
@@ -58,12 +62,7 @@ export async function PUT(req: Request, { params }: Params) {
         title: it.title ?? null,
         content: it.content ?? null,
         songId: it.songId ?? null,
-        refId: it.refId ?? it.songId ?? null,
-        refSubId: it.refSubId ?? null,
         notes: it.notes ?? null,
-        mediaPath: it.mediaPath ?? null,
-        secondaryContent: it.secondaryContent ?? null,
-        backgroundConfig: it.backgroundConfig ?? null,
       })),
     })
   })

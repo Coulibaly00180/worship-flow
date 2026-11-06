@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 const { mockAuth, mockPrisma } = vi.hoisted(() => ({
   mockAuth: vi.fn(),
   mockPrisma: {
-    servicePlan: { findUnique: vi.fn(), create: vi.fn() },
+    servicePlan: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
   },
 }))
 
@@ -19,11 +19,10 @@ const post = (body: unknown) =>
 const source = {
   id: "p1",
   title: "Culte",
-  backgroundConfig: null,
   deletedAt: null,
   items: [
-    { kind: "SONG_BLOCK", songId: "s1", refId: "s1", refSubId: null, title: "A", content: null, notes: "Ton: Do", mediaPath: null, secondaryContent: null, backgroundConfig: null },
-    { kind: "ANNOUNCEMENT_TEXT", songId: null, refId: null, refSubId: null, title: "B", content: "x", notes: null, mediaPath: null, secondaryContent: null, backgroundConfig: null },
+    { kind: "SONG_BLOCK", songId: "s1", title: "A", content: null, notes: "Ton: Do" },
+    { kind: "ANNOUNCEMENT_TEXT", songId: null, title: "B", content: "x", notes: null },
   ],
 }
 
@@ -49,15 +48,26 @@ describe("POST /api/plans/[id]/duplicate", () => {
   })
 
   it("409 si la date est déjà prise", async () => {
-    mockPrisma.servicePlan.findUnique
-      .mockResolvedValueOnce(source) // source
-      .mockResolvedValueOnce({ id: "autre" }) // conflit
+    mockPrisma.servicePlan.findUnique.mockResolvedValueOnce(source)
+    mockPrisma.servicePlan.findFirst.mockResolvedValueOnce({ id: "autre" }) // conflit
     expect((await post({ date: "2026-12-06T00:00:00.000Z" })).status).toBe(409)
     expect(mockPrisma.servicePlan.create).not.toHaveBeenCalled()
+    // Seuls les plans non supprimés comptent
+    expect(mockPrisma.servicePlan.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ deletedAt: null }) })
+    )
+  })
+
+  it("409 (et non 500) si la base refuse la date (création simultanée)", async () => {
+    mockPrisma.servicePlan.findUnique.mockResolvedValueOnce(source)
+    mockPrisma.servicePlan.findFirst.mockResolvedValueOnce(null)
+    mockPrisma.servicePlan.create.mockRejectedValueOnce(Object.assign(new Error("dup"), { code: "P2002" }))
+    expect((await post({ date: "2026-12-06T00:00:00.000Z" })).status).toBe(409)
   })
 
   it("copie tous les éléments, notes comprises, avec un ordre contigu", async () => {
-    mockPrisma.servicePlan.findUnique.mockResolvedValueOnce(source).mockResolvedValueOnce(null)
+    mockPrisma.servicePlan.findUnique.mockResolvedValueOnce(source)
+    mockPrisma.servicePlan.findFirst.mockResolvedValueOnce(null)
     const res = await post({ date: "2026-12-06T00:00:00.000Z" })
     expect(res.status).toBe(201)
     const data = mockPrisma.servicePlan.create.mock.calls[0][0].data

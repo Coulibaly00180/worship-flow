@@ -1,38 +1,82 @@
 # API — Application Web Chantre
 
-Contrats des Route Handlers Next.js 15. Toutes les routes sont préfixées `/api`.
+Contrats des Route Handlers Next.js 16. Toutes les routes sont préfixées `/api`.
 Les Server Actions sont utilisées pour les mutations depuis les formulaires React ;
 les Route Handlers servent pour TanStack Query (GET) et les mutations hors-formulaire.
 
 ## État réel de l'implémentation (novembre 2026)
 
-Le reste du document est la **conception initiale** ; certaines routes décrites plus bas
+**Cette section fait foi.** Le reste du document est la **conception initiale** ; certaines routes décrites plus bas
 (`/api/plans/today`, `/api/admin/users`, `/api/profile`, notes de blocs…) n'existent pas ou ont un autre chemin.
 Routes actuellement implémentées (`apps/web/src/app/api`) :
 
 | Route | Méthodes | Rôle minimum |
 |-------|----------|--------------|
-| `/api/auth/[...nextauth]` | GET, POST | public (connexion limitée : 5 échecs / 15 min par compte, 30 par IP) |
+| `/api/auth/[...nextauth]` | GET, POST | public — connexion par email (insensible à la casse) ou pseudo ; limitation décrite plus bas |
 | `/api/health` | GET | public |
-| `/api/songs` | GET, POST | connecté / `CHANTRE` — GET : `q` (titre, artiste, étiquettes, paroles ; insensible aux accents), `letter`, `status` (`TO_LEARN`, `IN_PROGRESS`, `MASTERED`), `fav=1`, `scores=1`, `tag` |
+| `/api/songs` | GET, POST | connecté / `CHANTRE` — GET : `q` (titre, artiste, étiquettes, paroles ; insensible aux accents), `letter`, `status` (`TO_LEARN`, `IN_PROGRESS`, `MASTERED`), `fav=1`, `scores=1`, `tag` (étiquette exacte), **`page`** (défaut 1), **`pageSize`** (défaut 60, max 200) |
 | `/api/songs/[id]` | GET, PATCH, DELETE | connecté / `CHANTRE` / `RESPONSABLE_CHANTRE` |
-| `/api/songs/[id]/favorite` | POST, DELETE | connecté |
-| `/api/songs/[id]/learning` | PUT | connecté |
+| `/api/songs/[id]/favorite` | POST, DELETE | connecté — 404 si le chant n'existe pas ou est supprimé |
+| `/api/songs/[id]/learning` | PUT | connecté — 404 si le chant n'existe pas ou est supprimé |
 | `/api/songs/[id]/scores` | GET, POST | connecté / `CHANTRE` — POST multipart (`file` PDF/PNG/JPEG 8 Mo max, type vérifié sur le contenu, `voice`) ou JSON `{ kind: "YAML", title, voice?, source }` (compilé côté serveur, 400 avec message lisible si invalide) ou `{ kind: "ABC", title, voice?, abc }` |
-| `/api/songs/[id]/scores/[scoreId]` | GET, PATCH, DELETE | connecté / `CHANTRE` — PATCH : `title`, `voice`, `position`, `source` (YAML, recompilé) ou `abc` (ABC) ; GET d'une partition ABC renvoie le texte |
-| `/api/songs/import`, `/api/songs/import/confirm` | POST | `CHANTRE` |
+| `/api/songs/[id]/scores/[scoreId]` | GET, PATCH, DELETE | connecté / `CHANTRE` — PATCH : `title`, `voice`, `position`, `source` (YAML, recompilé) ou `abc` (ABC) ; GET d'une partition ABC renvoie le texte ; un fichier est lu en base ou dans le stockage objet (S3) |
+| `/api/songs/import` | POST | `CHANTRE` — analyse seule, **50 fichiers max, 2 Mo max par fichier** (413 au-delà du nombre ; un fichier trop gros est signalé `ok: false`) |
+| `/api/songs/import/confirm` | POST | `CHANTRE` — `{ songs, mode: "IGNORE" \| "OVERWRITE" }` ; en écrasement, les blocs sont mis à jour en place |
 | `/api/plans` | GET, POST | connecté / `RESPONSABLE_CHANTRE` |
-| `/api/plans/[id]` | GET, PATCH, DELETE | connecté / `RESPONSABLE_CHANTRE` |
-| `/api/plans/[id]/items` | PUT | `RESPONSABLE_CHANTRE` (remplace tous les éléments, notes et médias conservés) |
-| `/api/plans/[id]/duplicate` | POST | `RESPONSABLE_CHANTRE` — corps `{ date, title? }`, 409 si la date est prise |
-| `/api/users` | GET, POST | `RESPONSABLE_CHANTRE` |
+| `/api/plans/[id]` | GET, PATCH, DELETE | connecté / `RESPONSABLE_CHANTRE` — DELETE : 404 si inconnu ou déjà supprimé |
+| `/api/plans/[id]/items` | PUT | `RESPONSABLE_CHANTRE` — remplace tous les éléments (100 max) ; champs `order`, `kind`, `songId?`, `title?`, `content?`, `notes?` ; 400 si un `songId` est inconnu ou supprimé |
+| `/api/plans/[id]/duplicate` | POST | `RESPONSABLE_CHANTRE` — corps `{ date, title? }`, 409 si la date est prise par un plan actif |
+| `/api/users` | GET, POST | `RESPONSABLE_CHANTRE` — POST : email enregistré en minuscules, 409 si email (toute casse) ou pseudo déjà pris |
 | `/api/users/me/appearance` | GET, PUT | connecté — réglages d'apparence synchronisés (la copie la plus récente gagne ; horodatage futur borné ; valeurs hors liste refusées) |
 | `/api/users/[id]` | PATCH, DELETE | soi-même ou gestionnaire (rang strictement supérieur) / `ADMIN` |
 
-Règles utilisateurs : mot de passe, email et nom d'un autre compte = `ADMIN` seulement ; rôle et activation = `ADMIN` ;
-un compte désactivé perd immédiatement ses droits (la session est relue en base).
+### Réponse paginée de `GET /api/songs`
 
-Validation : Zod 4 (`error.issues`). Une requête JSON invalide renvoie `400`.
+```ts
+{ ok: true, data: Song[], meta: { page: number, pageSize: number, total: number, pageCount: number } }
+```
+
+`Song.tags` est un **tableau de chaînes** (`string[]`). À l'écriture, `tags` accepte un tableau, l'ancien format
+JSON `'["a","b"]'` ou `"a, b"` ; les étiquettes sont nettoyées (vides et doublons retirés, 20 max).
+
+### Unicité et suppression douce
+
+Un titre de chant (et une date de plan) n'est unique que parmi les éléments **non supprimés** : on peut recréer
+un chant portant le titre d'un chant supprimé. Le contrôle est fait par la route **et** par un index unique partiel
+en base ; un doublon créé par deux requêtes simultanées renvoie donc `409`, jamais `500`.
+
+### Blocs d'un chant
+
+`PATCH /api/songs/[id]` avec `blocks` met à jour les blocs **en place**, position par position (mêmes identifiants) :
+seuls les blocs en trop sont supprimés et les nouveaux créés. Les notes personnelles attachées aux blocs survivent
+donc à une modification des paroles. Les positions sont renumérotées `0..n-1`.
+
+### Règles sur les comptes (`PATCH /api/users/[id]`)
+
+- Mot de passe, email et nom d'un autre compte : `ADMIN` seulement ; rôle et activation : `ADMIN`.
+- **Changer son propre mot de passe exige `currentPassword`** (admin compris) — sinon `403`
+  (`code: "INVALID_CURRENT_PASSWORD"`). La réponse contient `reauth: true` : l'interface déconnecte l'utilisateur.
+- **Changer un mot de passe ou désactiver un compte ferme toutes ses sessions** (`User.sessionVersion` incrémenté,
+  comparé à chaque requête au jeton JWT).
+- Changer son email vers un email déjà utilisé : `409`.
+- Impossible de rétrograder ou désactiver le **dernier administrateur actif** (`409`), ni de désactiver son propre compte (`400`).
+- Un compte désactivé perd immédiatement ses droits (la session est relue en base).
+
+### Limitation des tentatives de connexion
+
+Trois compteurs, stockés dans la table PostgreSQL `LoginThrottle` (partagée entre toutes les instances) :
+
+| Clé | Seuil (15 min) | Rôle |
+|-----|----------------|------|
+| compte + IP | 5 échecs | bloque l'attaquant sans verrouiller le vrai titulaire, qui se connecte depuis une autre adresse |
+| IP | 30 échecs | plusieurs fidèles peuvent partager le même Wi-Fi |
+| compte | 50 échecs | plafond contre une attaque répartie sur beaucoup d'adresses |
+
+Blocage : 15 min. L'IP est lue dans `X-Forwarded-For` **en partant de la fin** (valeur ajoutée par le proxy de
+confiance, voir `TRUSTED_PROXY_COUNT` dans `deploiement.md`) : falsifier l'en-tête ne contourne pas la limite.
+
+Validation : Zod 4 (`error.issues`). **Un corps JSON absent ou illisible renvoie `400` `{ ok: false, error: "JSON invalide" }`
+sur toutes les routes** (utilitaire `parseJsonBody`, `src/lib/http.ts`).
 
 ---
 
@@ -46,11 +90,11 @@ Validation : Zod 4 (`error.issues`). Une requête JSON invalide renvoie `400`.
   { ok: true, data: T }
   // Erreur métier
   { ok: false, error: string, code?: string }
-  // Erreur de validation (400)
-  { ok: false, error: "Données invalides", details: ZodFlattenedError }
+  // Erreur de validation (400) : premier message Zod
+  { ok: false, error: string }
   ```
 - **Codes HTTP utilisés** : `200`, `201`, `400`, `401`, `403`, `404`, `409`, `500`, `503`
-- **Pagination** : `?page=1&limit=20` — réponse inclut `{ total, page, limit, items[] }`
+- **Pagination** : `?page=1&pageSize=60` (max 200) — réponse `{ ok, data: T[], meta: { page, pageSize, total, pageCount } }`
 - **Erreurs 500** : toujours loguées côté serveur (`console.error`), message générique retourné au client — ne jamais exposer le stack trace
 - **Validation** : schémas Zod dans `src/lib/validations.ts`, partagés entre Route Handlers et formulaires React
 - **Idempotence** : les toggles (favoris) et les `PUT` (notes, apprentissage) sont idempotents — appelables plusieurs fois sans effet de bord

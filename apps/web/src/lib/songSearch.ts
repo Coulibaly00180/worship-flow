@@ -45,7 +45,7 @@ export async function searchSongIds(q: string): Promise<string[]> {
     return Prisma.sql`(
       unaccent(s."title") ILIKE unaccent(${p})
       OR unaccent(coalesce(s."artist", '')) ILIKE unaccent(${p})
-      OR unaccent(coalesce(s."tags", '')) ILIKE unaccent(${p})
+      OR unaccent(array_to_string(s."tags", ' ')) ILIKE unaccent(${p})
       OR EXISTS (
         SELECT 1 FROM "SongBlock" b
         WHERE b."songId" = s."id" AND unaccent(b."content") ILIKE unaccent(${p})
@@ -86,7 +86,7 @@ export async function buildSongQuery(
     where.learnings = { some: { userId, status: f.status as LearningFilter } }
   }
   const tag = f.tag?.trim()
-  if (tag) where.tags = { contains: `"${tag.replace(/"/g, "")}"`, mode: "insensitive" }
+  if (tag) where.tags = { has: tag }
 
   return { where, rank }
 }
@@ -96,4 +96,47 @@ export function sortByRank<T extends { id: string }>(items: T[], rank: string[] 
   if (!rank) return items
   const pos = new Map(rank.map((id, i) => [id, i]))
   return [...items].sort((a, b) => (pos.get(a.id) ?? 0) - (pos.get(b.id) ?? 0))
+}
+
+export const SONG_PAGE_SIZE = 60
+export const MAX_PAGE_SIZE = 200
+
+/** Numéro de page (1-based) lu dans une chaîne de requête ; toute valeur invalide donne 1. */
+export function parsePage(raw: string | null | undefined): number {
+  const n = Number.parseInt(raw ?? "", 10)
+  return Number.isFinite(n) && n > 0 ? Math.min(n, 10_000) : 1
+}
+
+/** Taille de page bornée [1, MAX_PAGE_SIZE]. */
+export function parsePageSize(raw: string | null | undefined, fallback = SONG_PAGE_SIZE): number {
+  const n = Number.parseInt(raw ?? "", 10)
+  return Number.isFinite(n) && n > 0 ? Math.min(n, MAX_PAGE_SIZE) : fallback
+}
+
+export type PageMeta = { page: number; pageSize: number; total: number; pageCount: number }
+
+export function pageMeta(page: number, pageSize: number, total: number): PageMeta {
+  return { page, pageSize, total, pageCount: Math.max(1, Math.ceil(total / pageSize)) }
+}
+
+/**
+ * Charge une page de chants. Avec une recherche (rang de pertinence, ≤ 500 ids), le tri se fait
+ * en mémoire puis on découpe ; sans recherche, la pagination est faite par la base (skip/take).
+ */
+export async function findSongPage<T extends { id: string }>(
+  where: Prisma.SongWhereInput,
+  rank: string[] | null,
+  page: number,
+  pageSize: number,
+  find: (args: { where: Prisma.SongWhereInput; skip?: number; take?: number }) => Promise<T[]>,
+): Promise<{ items: T[]; meta: PageMeta }> {
+  if (rank) {
+    const all = sortByRank(await find({ where }), rank)
+    return { items: all.slice((page - 1) * pageSize, page * pageSize), meta: pageMeta(page, pageSize, all.length) }
+  }
+  const [items, total] = await Promise.all([
+    find({ where, skip: (page - 1) * pageSize, take: pageSize }),
+    prisma.song.count({ where }),
+  ])
+  return { items, meta: pageMeta(page, pageSize, total) }
 }

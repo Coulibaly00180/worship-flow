@@ -1,4 +1,4 @@
-/* Service worker — Church Presenter
+/* Service worker — Worship Flow
  *
  * Objectif : pouvoir consulter chants, partitions et plans sans réseau.
  *  - Ressources statiques (/_next/static, icônes, polices) : cache d'abord.
@@ -6,18 +6,58 @@
  *  - Données GET /api/songs|plans (+ fichiers de partitions) : réseau d'abord, sinon cache.
  *  - JAMAIS en cache : /api/auth, /api/users, /login, toute requête non-GET.
  * Mise à jour : les ressources statiques de l'ancienne version sont reportées dans le nouveau cache avant suppression
- * (les pages enregistrées « hors-ligne » en dépendent).
+ * (les pages enregistrées « hors-ligne » en dépendent), puis les pages hors-ligne sont rafraîchies si le réseau le permet.
+ * Pour que le cache ne grossisse pas indéfiniment, les fichiers /_next/static (nom haché, propres à une version)
+ * ne sont reportés que si des pages hors-ligne existent, et au plus MAX_CARRY_GENERATIONS mises à jour de suite.
  * Les caches contiennent des données de l'utilisateur connecté : ils sont vidés à la déconnexion
  * (message CLEAR_CACHES envoyé par l'application) et peuvent être alimentés explicitement
  * (bouton « Disponible hors-ligne », cache `cp-offline`).
  */
-const VERSION = "v2"
+const VERSION = "v3"
 const STATIC_CACHE = `cp-static-${VERSION}`
 const PAGES_CACHE = `cp-pages-${VERSION}`
 const DATA_CACHE = `cp-data-${VERSION}`
 const OFFLINE_CACHE = "cp-offline" // alimenté par l'application (ne change pas avec VERSION)
 const OFFLINE_URL = "/offline.html"
 const NETWORK_TIMEOUT_MS = 3000
+const MAX_CARRY_GENERATIONS = 3
+const GENERATION_HEADER = "x-wf-carried"
+const ASSET_RE = /\/_next\/static\/[A-Za-z0-9_\-./%~]+\.(?:js|css|woff2?)/g
+
+function isHashedAsset(url) {
+  return new URL(url).pathname.startsWith("/_next/static/")
+}
+
+/** Copie d'une réponse avec le nombre de reports d'une version à l'autre. */
+async function withGeneration(response, generation) {
+  const headers = new Headers(response.headers)
+  headers.set(GENERATION_HEADER, String(generation))
+  return new Response(await response.blob(), { status: response.status, statusText: response.statusText, headers })
+}
+
+/** Rafraîchit les pages enregistrées hors-ligne et range leurs nouveaux scripts (au mieux, sans réseau on garde l'ancienne). */
+async function refreshOfflinePages(staticCache) {
+  const offline = await caches.open(OFFLINE_CACHE)
+  for (const request of await offline.keys()) {
+    try {
+      const res = await Promise.race([fetch(request.url, { credentials: "same-origin" }), timeout(NETWORK_TIMEOUT_MS * 3)])
+      if (!res.ok || res.redirected) continue
+      const isHtml = (res.headers.get("content-type") || "").includes("text/html")
+      if (isHtml) {
+        const html = await res.clone().text()
+        const assets = Array.from(new Set(html.split("\\/").join("/").match(ASSET_RE) || []))
+        for (const asset of assets) {
+          if (await staticCache.match(asset)) continue
+          const a = await fetch(asset)
+          if (a.ok) await staticCache.put(asset, a)
+        }
+      }
+      await offline.put(request, res)
+    } catch {
+      // hors-ligne ou session expirée : la version enregistrée est conservée
+    }
+  }
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -30,6 +70,7 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const keep = new Set([STATIC_CACHE, PAGES_CACHE, DATA_CACHE, OFFLINE_CACHE])
       const current = await caches.open(STATIC_CACHE)
+      const hasOfflinePages = (await (await caches.open(OFFLINE_CACHE)).keys()).length > 0
       for (const name of await caches.keys()) {
         if (keep.has(name)) continue
         // Mise à jour du service worker : les pages déjà enregistrées « hors-ligne » (cache cp-offline, conservé)
@@ -41,7 +82,16 @@ self.addEventListener("activate", (event) => {
             for (const request of await old.keys()) {
               if (await current.match(request)) continue
               const response = await old.match(request)
-              if (response) await current.put(request, response)
+              if (!response) continue
+              if (!isHashedAsset(request.url)) {
+                // sons, icônes, page hors-ligne : URL stable, aucun risque d'accumulation
+                await current.put(request, response)
+                continue
+              }
+              // Script/style d'une ancienne version : utile seulement aux pages hors-ligne, et pas éternellement
+              const generation = Number(response.headers.get(GENERATION_HEADER) || "0") + 1
+              if (!hasOfflinePages || generation > MAX_CARRY_GENERATIONS) continue
+              await current.put(request, await withGeneration(response, generation))
             }
           } catch {
             // report impossible (stockage plein…) : on perd seulement du cache, jamais des données
@@ -50,6 +100,7 @@ self.addEventListener("activate", (event) => {
         await caches.delete(name)
       }
       await self.clients.claim()
+      if (hasOfflinePages) await refreshOfflinePages(current)
     })(),
   )
 })

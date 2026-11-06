@@ -3,10 +3,13 @@ import { z } from "zod"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { canManagePlans } from "@/lib/roles"
+import { forbidden, isUniqueViolation, jsonError, parseJsonBody, unauthorized } from "@/lib/http"
+
+const DUPLICATE_DATE = "Un plan existe déjà pour cette date"
 
 const CreatePlanSchema = z.object({
   date: z.string().datetime({ message: "Date invalide (ISO 8601 requis)" }),
-  title: z.string().optional(),
+  title: z.string().trim().max(200).optional(),
 })
 
 export async function GET() {
@@ -24,27 +27,21 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await auth()
-  if (!session) return NextResponse.json({ ok: false, error: "Non authentifié" }, { status: 401 })
-  if (!canManagePlans(session.user.role)) {
-    return NextResponse.json({ ok: false, error: "Accès refusé — rôle insuffisant" }, { status: 403 })
+  if (!session) return unauthorized()
+  if (!canManagePlans(session.user.role)) return forbidden()
+
+  const parsed = await parseJsonBody(req, CreatePlanSchema)
+  if (!parsed.ok) return parsed.response
+
+  const date = new Date(parsed.data.date)
+  const existing = await prisma.servicePlan.findFirst({ where: { date, deletedAt: null }, select: { id: true } })
+  if (existing) return jsonError(DUPLICATE_DATE, 409)
+
+  try {
+    const plan = await prisma.servicePlan.create({ data: { date, title: parsed.data.title } })
+    return NextResponse.json({ ok: true, data: plan }, { status: 201 })
+  } catch (err) {
+    if (isUniqueViolation(err)) return jsonError(DUPLICATE_DATE, 409)
+    throw err
   }
-
-  const body = await req.json()
-  const parsed = CreatePlanSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.issues[0].message }, { status: 400 })
-  }
-
-  const existing = await prisma.servicePlan.findFirst({
-    where: { date: new Date(parsed.data.date), deletedAt: null },
-  })
-  if (existing) {
-    return NextResponse.json({ ok: false, error: "Un plan existe déjà pour cette date" }, { status: 409 })
-  }
-
-  const plan = await prisma.servicePlan.create({
-    data: { date: new Date(parsed.data.date), title: parsed.data.title },
-  })
-
-  return NextResponse.json({ ok: true, data: plan }, { status: 201 })
 }

@@ -3,12 +3,15 @@ import { z } from "zod"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { canManagePlans } from "@/lib/roles"
+import { forbidden, isUniqueViolation, jsonError, parseJsonBody, unauthorized } from "@/lib/http"
+
+const DUPLICATE_DATE = "Un plan existe déjà pour cette date"
 
 type Params = { params: Promise<{ id: string }> }
 
 const UpdatePlanSchema = z.object({
   date: z.string().datetime().optional(),
-  title: z.string().optional().nullable(),
+  title: z.string().trim().max(200).optional().nullable(),
 })
 
 export async function GET(_req: Request, { params }: Params) {
@@ -30,43 +33,51 @@ export async function GET(_req: Request, { params }: Params) {
 
 export async function PATCH(req: Request, { params }: Params) {
   const session = await auth()
-  if (!session) return NextResponse.json({ ok: false, error: "Non authentifié" }, { status: 401 })
-  if (!canManagePlans(session.user.role)) {
-    return NextResponse.json({ ok: false, error: "Accès refusé — rôle insuffisant" }, { status: 403 })
-  }
+  if (!session) return unauthorized()
+  if (!canManagePlans(session.user.role)) return forbidden()
 
   const { id } = await params
-  const body = await req.json()
-  const parsed = UpdatePlanSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.issues[0].message }, { status: 400 })
-  }
+  const parsed = await parseJsonBody(req, UpdatePlanSchema)
+  if (!parsed.ok) return parsed.response
 
   const plan = await prisma.servicePlan.findUnique({ where: { id } })
-  if (!plan || plan.deletedAt) {
-    return NextResponse.json({ ok: false, error: "Plan introuvable" }, { status: 404 })
+  if (!plan || plan.deletedAt) return jsonError("Plan introuvable", 404)
+
+  const date = parsed.data.date ? new Date(parsed.data.date) : undefined
+  if (date && date.getTime() !== plan.date.getTime()) {
+    const clash = await prisma.servicePlan.findFirst({
+      where: { date, deletedAt: null, NOT: { id } },
+      select: { id: true },
+    })
+    if (clash) return jsonError(DUPLICATE_DATE, 409)
   }
 
-  const updated = await prisma.servicePlan.update({
-    where: { id },
-    data: {
-      ...(parsed.data.date ? { date: new Date(parsed.data.date) } : {}),
-      ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
-    },
-  })
-
-  return NextResponse.json({ ok: true, data: updated })
+  try {
+    const updated = await prisma.servicePlan.update({
+      where: { id },
+      data: {
+        ...(date ? { date } : {}),
+        ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
+      },
+    })
+    return NextResponse.json({ ok: true, data: updated })
+  } catch (err) {
+    if (isUniqueViolation(err)) return jsonError(DUPLICATE_DATE, 409)
+    throw err
+  }
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
   const session = await auth()
-  if (!session) return NextResponse.json({ ok: false, error: "Non authentifié" }, { status: 401 })
-  if (!canManagePlans(session.user.role)) {
-    return NextResponse.json({ ok: false, error: "Accès refusé — rôle insuffisant" }, { status: 403 })
-  }
+  if (!session) return unauthorized()
+  if (!canManagePlans(session.user.role)) return forbidden()
 
   const { id } = await params
-  await prisma.servicePlan.update({ where: { id }, data: { deletedAt: new Date() } })
+  const { count } = await prisma.servicePlan.updateMany({
+    where: { id, deletedAt: null },
+    data: { deletedAt: new Date() },
+  })
+  if (count === 0) return jsonError("Plan introuvable", 404)
 
   return NextResponse.json({ ok: true, data: { id } })
 }

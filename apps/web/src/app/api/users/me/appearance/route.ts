@@ -39,6 +39,6 @@ export async function PUT(req: Request) {
     return NextResponse.json({ ok: true, data: existing, ignored: true })
   }
 
-  await prisma.user.update({ where: { id: session.user.id }, data: { uiPrefs: JSON.stringify(payload) } })
+  await prisma.user.update({ where: { id: session.user.id }, data: { uiPrefs: payload } })
   return NextResponse.json({ ok: true, data: payload })
 }

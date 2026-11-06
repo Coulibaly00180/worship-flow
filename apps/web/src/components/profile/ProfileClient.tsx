@@ -38,6 +38,7 @@ export function ProfileClient({
   masteredCount: number
 }) {
   const [username, setUsername] = useState(user.username)
+  const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [savingInfo, setSavingInfo] = useState(false)
@@ -72,13 +73,17 @@ export function ProfileClient({
       const res = await fetch(`/api/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: newPassword }),
+        body: JSON.stringify({ password: newPassword, currentPassword }),
       })
       const json = await res.json()
       if (json.ok) {
-        toast.success("Mot de passe mis à jour")
+        // Le changement de mot de passe ferme toutes les sessions, celle-ci comprise
+        toast.success("Mot de passe mis à jour — reconnectez-vous avec le nouveau")
+        setCurrentPassword("")
         setNewPassword("")
         setConfirmPassword("")
+        await clearOfflineCaches()
+        await signOut({ callbackUrl: "/login" })
       } else {
         toast.error(json.error ?? "Erreur")
       }
@@ -216,8 +221,23 @@ export function ProfileClient({
             <h2 className="text-sm font-bold mb-4" style={{ color: "var(--color-primary)" }}>Sécurité</h2>
             <div className="flex flex-col gap-3">
               <div>
-                <label className="input-label">Nouveau mot de passe</label>
+                <label className="input-label" htmlFor="pwd-current">Mot de passe actuel</label>
                 <input
+                  id="pwd-current"
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="input-label" htmlFor="pwd-new">Nouveau mot de passe</label>
+                <input
+                  id="pwd-new"
+                  autoComplete="new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -228,8 +248,10 @@ export function ProfileClient({
                 />
               </div>
               <div>
-                <label className="input-label">Confirmer le mot de passe</label>
+                <label className="input-label" htmlFor="pwd-confirm">Confirmer le mot de passe</label>
                 <input
+                  id="pwd-confirm"
+                  autoComplete="new-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

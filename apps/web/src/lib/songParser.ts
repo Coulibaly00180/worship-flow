@@ -10,6 +10,10 @@
 //   REFRAIN
 //   ...
 
+/** Limites de l'import en masse. */
+export const MAX_IMPORT_FILES = 50
+export const MAX_IMPORT_FILE_BYTES = 2 * 1024 * 1024 // 2 Mo par fichier (un chant = quelques Ko)
+
 export type ParsedBlock = {
   type: "VERSE" | "CHORUS" | "BRIDGE" | "INTRO" | "OUTRO" | "OTHER"
   label: string

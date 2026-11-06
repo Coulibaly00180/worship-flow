@@ -44,6 +44,9 @@ describe("parseStoredPrefs", () => {
   it("relit ce qui a été stocké", () => {
     expect(parseStoredPrefs(JSON.stringify(payload(7)))?.updatedAt).toBe(7)
   })
+  it("relit un objet issu de la colonne JSONB", () => {
+    expect(parseStoredPrefs(payload(9))?.updatedAt).toBe(9)
+  })
   it("renvoie null pour une valeur absente, corrompue ou invalide", () => {
     expect(parseStoredPrefs(null)).toBeNull()
     expect(parseStoredPrefs("{cassé")).toBeNull()

@@ -6,23 +6,15 @@ type SongCardProps = {
   id: string
   title: string
   artist?: string | null
-  tags?: string | null
+  tags?: string[] | null
   isFavorite?: boolean
   hasScore?: boolean
   learningStatus?: "TO_LEARN" | "IN_PROGRESS" | "MASTERED" | null
 }
 
-function firstTag(tags?: string | null): string | null {
-  if (!tags) return null
-  try {
-    const arr = JSON.parse(tags)
-    return Array.isArray(arr) && arr.length > 0 ? String(arr[0]) : null
-  } catch { return null }
-}
-
 /** Carte d'un chant : toute la carte est un lien vers la fiche (grande zone tactile). */
 export function SongCard({ id, title, artist, tags, isFavorite, hasScore, learningStatus }: SongCardProps) {
-  const tag = firstTag(tags)
+  const tag = tags?.[0] ?? null
 
   return (
     <Link href={`/app/songs/${id}`} className="song-card" style={{ textDecoration: "none" }}>

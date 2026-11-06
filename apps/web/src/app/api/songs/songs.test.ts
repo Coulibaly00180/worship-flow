@@ -7,6 +7,7 @@ const { mockAuth, mockPrisma } = vi.hoisted(() => {
       findMany: vi.fn(),
       findFirst: vi.fn(),
       create: vi.fn(),
+      count: vi.fn(),
     },
     $queryRaw: vi.fn(),
   }
@@ -39,6 +40,20 @@ describe("GET /api/songs", () => {
   beforeEach(() => {
     mockAuth.mockResolvedValue(makeSession())
     mockPrisma.song.findMany.mockResolvedValue([baseSong])
+    mockPrisma.song.count.mockResolvedValue(1)
+  })
+
+  it("pagine en base et renvoie les métadonnées", async () => {
+    mockPrisma.song.count.mockResolvedValue(130)
+    const res = await GET(new Request("http://localhost/api/songs?page=2&pageSize=50"))
+    expect(mockPrisma.song.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 50, take: 50 }))
+    const json = await res.json()
+    expect(json.meta).toEqual({ page: 2, pageSize: 50, total: 130, pageCount: 3 })
+  })
+
+  it("borne la taille de page", async () => {
+    await GET(new Request("http://localhost/api/songs?pageSize=99999&page=-3"))
+    expect(mockPrisma.song.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 200 }))
   })
 
   it("retourne 401 sans session", async () => {
@@ -172,6 +187,41 @@ describe("POST /api/songs", () => {
     const json = await res.json()
     expect(json.ok).toBe(true)
     expect(mockPrisma.song.create).toHaveBeenCalledOnce()
+  })
+
+  it("retourne 400 (et non 500) sur un JSON invalide", async () => {
+    const res = await POST(new Request("http://localhost/api/songs", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: "{pas du json",
+    }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe("JSON invalide")
+  })
+
+  it("retourne 409 (et non 500) si la base refuse un doublon créé entre-temps", async () => {
+    mockPrisma.song.create.mockRejectedValue(Object.assign(new Error("unique"), { code: "P2002" }))
+    const res = await POST(new Request("http://localhost/api/songs", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(validPayload),
+    }))
+    expect(res.status).toBe(409)
+  })
+
+  it("ne compte que les chants non supprimés pour le doublon de titre", async () => {
+    await POST(new Request("http://localhost/api/songs", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(validPayload),
+    }))
+    expect(mockPrisma.song.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { title: "Amazing Grace", deletedAt: null } })
+    )
+  })
+
+  it("normalise les étiquettes (ancien format JSON accepté, doublons retirés)", async () => {
+    await POST(new Request("http://localhost/api/songs", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...validPayload, tags: '["Louange", " louange ", "Noël"]' }),
+    }))
+    expect(mockPrisma.song.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ tags: ["Louange", "Noël"] }) })
+    )
   })
 
   it("passe artist à Prisma quand fourni", async () => {

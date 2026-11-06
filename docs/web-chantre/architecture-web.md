@@ -2,14 +2,25 @@
 
 > **⚠️ Document historique.** L'application desktop (Electron) a été retirée du projet en novembre 2026 ; le projet est désormais uniquement l'app web pour les chantres et la chorale. Les passages sur le desktop, SQLite et la synchronisation sont obsolètes.
 
-Structure de fichiers, patterns de code et conventions pour l'app Next.js 15.
+Structure de fichiers, patterns de code et conventions pour l'app Next.js 16.
 
 ---
 
 > **Stack actuelle (nov. 2026)** : Next.js 16 (Turbopack), React 19, NextAuth v5 (JWT), Prisma 7 + `@prisma/adapter-pg`, Zod 4, Vitest 4, Tailwind CSS 4, PostgreSQL.
 > Ajouts depuis la conception : partitions (`SongScore`, fichiers stockés en `BYTEA`, 8 Mo), duplication/impression/notes des plans,
 > partitions par voix et en notation ABC (abcjs), recherche plein texte `unaccent`, mode lecture scène, PWA hors-ligne (`public/sw.js`, `src/lib/offline.ts`),
-> limitation des tentatives de connexion (`src/lib/rateLimit.ts`, en mémoire par instance), en-têtes de sécurité (`next.config.ts`), `auth()` qui invalide les comptes désactivés.
+> limitation des tentatives de connexion (`src/lib/rateLimit.ts`), en-têtes de sécurité (`next.config.ts`), `auth()` qui invalide les comptes désactivés.
+>
+> **Durcissement (nov. 2026)** — briques transverses à réutiliser dans toute nouvelle route :
+> - `src/lib/http.ts` : `parseJsonBody(req, schema)` (JSON illisible → 400, jamais 500), `jsonError`, `unauthorized`, `forbidden`,
+>   `isUniqueViolation` (P2002 → 409).
+> - `src/lib/songBlocks.ts` : `replaceSongBlocks` met à jour les blocs en place (les `SongNote` ne sont plus effacées en cascade).
+> - `src/lib/rateLimit.ts` : magasin PostgreSQL partagé (`LoginThrottle`) par défaut, mémoire en option ; trois compteurs compte+IP / IP / compte.
+> - `src/lib/clientIp.ts` : IP client lue depuis la fin de `X-Forwarded-For` (`TRUSTED_PROXY_COUNT`).
+> - `User.sessionVersion` : incrémenté au changement de mot de passe / à la désactivation, comparé au JWT dans le callback `session`.
+> - `src/lib/scoreStorage.ts` : stockage objet S3 optionnel des partitions fichier.
+> - `src/lib/songSearch.ts` : `findSongPage` (pagination en base, ou en mémoire après tri par pertinence).
+> - Unicité « parmi les non supprimés » : index uniques partiels SQL (`Song_title_active_key`, `ServicePlan_date_active_key`).
 
 ## Structure de fichiers
 
@@ -500,9 +511,12 @@ declare module "next-auth" {
 
 ---
 
-## Schéma Prisma complet (apps/web/prisma/schema.prisma)
+## Schéma Prisma (conception initiale)
 
-Schéma cible après migration, incluant les modèles existants et les nouveaux :
+> **Le schéma réel fait foi : `apps/web/prisma/schema.prisma`.** Le bloc ci-dessous est le schéma de la conception
+> initiale, conservé pour l'historique ; il ne reflète ni les partitions, ni les étiquettes en `TEXT[]`, ni
+> `sessionVersion`, ni `LoginThrottle`, et contient des colonnes héritées supprimées depuis
+> (`backgroundConfig`, `mediaPath`, `refId`…).
 
 ```prisma
 generator client {

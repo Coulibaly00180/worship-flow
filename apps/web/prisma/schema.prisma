@@ -11,12 +11,15 @@ datasource db {
 
 model Song {
   id        String    @id @default(cuid())
-  title     String    @unique
+  // Unicité du titre parmi les chants NON supprimés : index unique partiel
+  // "Song_title_active_key" (WHERE "deletedAt" IS NULL) créé en SQL dans la migration
+  // 20261106120000_hardening — Prisma ne sait pas l'exprimer dans le schéma.
+  title     String
   artist    String?
   album     String?
   year      String?
   language  String?
-  tags      String?   // JSON-as-TEXT
+  tags      String[]  @default([])
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -26,6 +29,8 @@ model Song {
   favorites Favorite[]
   learnings SongLearning[]
   scores    SongScore[]
+
+  @@index([title])
 }
 
 model SongBlock {
@@ -47,32 +52,30 @@ model SongBlock {
 
 model ServicePlan {
   id               String    @id @default(cuid())
-  date             DateTime  @unique
-  title            String?
-  backgroundConfig String?   // JSON-as-TEXT
-  deletedAt        DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  // Un seul plan NON supprimé par date : index unique partiel "ServicePlan_date_active_key"
+  // (WHERE "deletedAt" IS NULL) créé en SQL dans la migration 20261106120000_hardening.
+  date      DateTime
+  title     String?
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   items ServiceItem[]
+
+  @@index([date])
 }
 
 model ServiceItem {
-  id               String  @id @default(cuid())
-  planId           String
-  order            Int
-  kind             String
-  refId            String?
-  refSubId         String?
-  songId           String?
-  title            String?
-  content          String?
-  notes            String?
-  mediaPath        String?
-  secondaryContent String?  // JSON-as-TEXT
-  backgroundConfig String?  // JSON-as-TEXT
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id        String   @id @default(cuid())
+  planId    String
+  order     Int
+  kind      String
+  songId    String?
+  title     String?
+  content   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   plan ServicePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
   song Song?       @relation("ServiceItemSong", fields: [songId], references: [id], onDelete: SetNull)
@@ -95,7 +98,9 @@ model SongScore {
   filename     String
   mimeType     String
   size         Int
+  // FILE : contenu soit en base (data), soit dans un stockage objet S3 compatible (storageKey)
   data         Bytes?
+  storageKey   String?
   abc          String?
   // Source saisie par l'utilisateur pour les partitions "YAML" (le champ abc contient alors le résultat compilé)
   source       String?
@@ -122,7 +127,9 @@ model User {
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
   // Réglages d'apparence synchronisés entre appareils (JSON : { appearance, theme, updatedAt })
-  uiPrefs      String?
+  uiPrefs      Json?
+  // Incrémenté à chaque changement de mot de passe / désactivation : invalide les sessions (JWT) existantes
+  sessionVersion Int     @default(0)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -177,4 +184,16 @@ enum LearningStatus {
   TO_LEARN
   IN_PROGRESS
   MASTERED
+}
+
+// ── Limitation des tentatives de connexion (partagée entre instances) ───────
+
+model LoginThrottle {
+  key         String    @id
+  failures    Int       @default(0)
+  windowStart DateTime
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@index([updatedAt])
 }

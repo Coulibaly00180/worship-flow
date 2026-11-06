@@ -56,6 +56,48 @@ liens `.next/node_modules` de Turbopack repointés dans l'image, `pg` déclaré 
 
 ---
 
+## 0 bis. Variables d'environnement (référence)
+
+| Variable | Obligatoire | Rôle |
+|----------|-------------|------|
+| `DATABASE_URL` | oui | Connexion PostgreSQL |
+| `AUTH_SECRET` (ou `NEXTAUTH_SECRET`) | oui | Signature des sessions — `openssl rand -base64 32` |
+| `AUTH_URL` / `NEXTAUTH_URL` | oui en production | URL publique de l'application |
+| `AUTH_TRUST_HOST` | derrière un proxy | `true` derrière Nginx/Traefik/Docker |
+| `TRUSTED_PROXY_COUNT` | non (défaut `1`) | Nombre de proxys de confiance devant l'app. L'IP client (limitation des connexions) est lue dans `X-Forwarded-For` en partant de la fin. `1` pour Vercel ou un seul reverse-proxy ; `2` pour CDN + reverse-proxy ; **`0` si l'app est exposée directement sans proxy** (l'en-tête, falsifiable, est alors ignoré) |
+| `RATE_LIMIT_STORE` | non (défaut `database`) | `database` : compteurs dans la table `LoginThrottle`, partagés entre instances (indispensable sur Vercel ou avec plusieurs réplicas). `memory` : en mémoire, local au processus |
+| `S3_BUCKET` | non | Active le stockage objet des partitions PDF/PNG/JPEG. Sans lui, les fichiers restent dans PostgreSQL |
+| `S3_REGION` | non (défaut `auto`) | Région (`auto` pour Cloudflare R2) |
+| `S3_ENDPOINT` | non | Pour R2, MinIO, Scaleway… (ex. `https://<compte>.r2.cloudflarestorage.com`) |
+| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | selon l'hébergeur | Identifiants ; sinon la chaîne standard AWS (rôle IAM…) |
+| `S3_FORCE_PATH_STYLE` | non | `true` pour MinIO |
+| `S3_PREFIX` | non (défaut `scores`) | Préfixe des clés d'objets |
+| `RUN_MIGRATIONS` | non (défaut `true`, Docker) | Appliquer les migrations au démarrage du conteneur |
+
+### Stockage objet des partitions
+
+1. Créer un bucket **privé** (aucun accès public : les fichiers sont toujours servis par l'application, après contrôle de session).
+2. Renseigner `S3_BUCKET` (+ endpoint et identifiants), redéployer : les nouveaux fichiers partent dans le bucket.
+3. Déplacer les partitions déjà en base (idempotent, reprend où il s'est arrêté) :
+   ```bash
+   npm run scores:to-s3 -w @cp/web -- --dry   # liste
+   npm run scores:to-s3 -w @cp/web            # déplace
+   ```
+
+Les partitions encore en base restent lisibles : les deux modes coexistent.
+
+### Migration `20261106120000_hardening`
+
+Appliquée automatiquement par `prisma migrate deploy`. Elle :
+- remplace l'unicité globale de `Song.title` et `ServicePlan.date` par des index uniques **partiels** (lignes non supprimées) ;
+- convertit `Song.tags` (texte JSON) en `TEXT[]` et `User.uiPrefs` en `JSONB` (valeur illisible → vide, sans faire échouer la migration) ;
+- ajoute `User.sessionVersion`, `SongScore.storageKey` et la table `LoginThrottle` ;
+- supprime les colonnes héritées jamais utilisées (`ServicePlan.backgroundConfig`, `ServiceItem.refId/refSubId/mediaPath/secondaryContent/backgroundConfig`).
+
+Faire une sauvegarde avant de l'appliquer en production (suppression de colonnes).
+
+---
+
 ## 1. Prérequis
 
 - [ ] Compte Vercel créé et lié au compte GitHub
@@ -87,6 +129,9 @@ Dans Vercel → Project Settings → Environment Variables :
 | `NEXTAUTH_SECRET` | `<openssl rand -base64 32>` | Production, Preview |
 | `NEXTAUTH_URL` | `https://chantre.mondomaine.com` | Production uniquement |
 | `NODE_ENV` | `production` | Production |
+| `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | stockage objet (recommandé : Cloudflare R2 ou Vercel Blob compatible S3) | Production |
+
+`TRUSTED_PROXY_COUNT` et `RATE_LIMIT_STORE` n'ont pas à être changés sur Vercel (défauts adaptés).
 
 Format de l'URL Transaction Pooler (Supabase → Project Settings → Database → Connection pooling) :
 ```
@@ -289,12 +334,7 @@ NEXTAUTH_SECRET="dev-secret-local-not-for-prod"
 NEXTAUTH_URL="http://localhost:3000"
 ```
 
-`apps/desktop/.env` :
-```env
-DATABASE_URL="file:../data/app.db"
-# Transaction Pooler Supabase — sync PostgreSQL
-DATABASE_URL_PG="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
-```
+Optionnel en local : `TRUSTED_PROXY_COUNT=0` (pas de proxy devant `next dev`), `RATE_LIMIT_STORE=memory`.
 
 ---
 

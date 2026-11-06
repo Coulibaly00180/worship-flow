@@ -19,5 +19,7 @@ declare module "next-auth/jwt" {
     username?: string
     firstName?: string
     lastName?: string
+    /** Version de session du compte au moment de la connexion (voir User.sessionVersion) */
+    sv?: number
   }
 }
