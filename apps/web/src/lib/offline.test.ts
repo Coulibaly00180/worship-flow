@@ -24,3 +24,14 @@ describe("extractStaticAssets", () => {
     expect(extractStaticAssets(html)).toEqual(["/_next/static/a.js"])
   })
 })
+
+describe("cohérence avec le service worker", () => {
+  it("STATIC_CACHE correspond à la version déclarée dans public/sw.js", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { resolve } = await import("node:path")
+    const { STATIC_CACHE } = await import("./offline")
+    const sw = readFileSync(resolve(__dirname, "../../public/sw.js"), "utf8")
+    const version = sw.match(/const VERSION = "([^"]+)"/)?.[1]
+    expect(STATIC_CACHE).toBe(`cp-static-${version}`)
+  })
+})

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { canEditSongs } from "@/lib/roles"
 import { MAX_ABC_CHARS, MAX_SCORE_BYTES, VOICES, detectScoreType, isVoice, sanitizeFilename } from "@/lib/scoreFile"
 import { MAX_YAML_CHARS, compileYamlScore } from "@/lib/scoreYaml"
+import { deleteScoreObject, newScoreKey, objectStorageEnabled, putScoreObject } from "@/lib/scoreStorage"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -34,7 +35,7 @@ export async function GET(_req: Request, { params }: Params) {
 
   const { id } = await params
   const scores = await prisma.songScore.findMany({
-    where: { songId: id },
+    where: { songId: id, song: { deletedAt: null } },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     select: SELECT,
   })
@@ -136,19 +137,30 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, error: "Format non supporté (PDF, PNG ou JPEG)" }, { status: 415 })
   }
 
-  const score = await prisma.songScore.create({
-    data: {
-      songId: id,
-      kind: "FILE",
-      voice,
-      position,
-      filename: sanitizeFilename(file.name),
-      mimeType,
-      size: bytes.length,
-      data: bytes,
-      uploadedById: session.user.id,
-    },
-    select: SELECT,
-  })
-  return NextResponse.json({ ok: true, data: score }, { status: 201 })
+  // Stockage objet configuré : le fichier y part, la base ne garde que la clé
+  const storageKey = objectStorageEnabled() ? newScoreKey(id) : null
+  if (storageKey) await putScoreObject(storageKey, bytes, mimeType)
+
+  try {
+    const score = await prisma.songScore.create({
+      data: {
+        songId: id,
+        kind: "FILE",
+        voice,
+        position,
+        filename: sanitizeFilename(file.name),
+        mimeType,
+        size: bytes.length,
+        data: storageKey ? null : bytes,
+        storageKey,
+        uploadedById: session.user.id,
+      },
+      select: SELECT,
+    })
+    return NextResponse.json({ ok: true, data: score }, { status: 201 })
+  } catch (err) {
+    // Pas d'objet orphelin si l'enregistrement en base échoue
+    if (storageKey) await deleteScoreObject(storageKey)
+    throw err
+  }
 }

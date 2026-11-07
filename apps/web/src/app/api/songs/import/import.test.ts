@@ -9,6 +9,7 @@ vi.mock("@/lib/auth", () => ({ auth: mockAuth }))
 vi.mock("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 import { POST } from "./route"
+import { MAX_IMPORT_FILES, MAX_IMPORT_FILE_BYTES } from "@/lib/songParser"
 
 function makeSession() {
   return { user: { id: "user-1", name: "Test", email: "t@t.com", role: "CHANTRE" } }
@@ -30,6 +31,31 @@ describe("POST /api/songs/import", () => {
     fd.append("files", makeTxtFile("test.txt", "Song"))
     const res = await POST(new Request("http://localhost", { method: "POST", body: fd }))
     expect(res.status).toBe(401)
+  })
+
+  it("retourne 403 pour un LECTEUR (lecture seule)", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "l", role: "LECTEUR" } })
+    const fd = new FormData()
+    fd.append("files", makeTxtFile("test.txt", "Song"))
+    const res = await POST(new Request("http://localhost", { method: "POST", body: fd }))
+    expect(res.status).toBe(403)
+  })
+
+  it("refuse plus de MAX_IMPORT_FILES fichiers", async () => {
+    const fd = new FormData()
+    for (let i = 0; i < MAX_IMPORT_FILES + 1; i++) fd.append("files", makeTxtFile(`${i}.txt`, "Chant"))
+    const res = await POST(new Request("http://localhost", { method: "POST", body: fd }))
+    expect(res.status).toBe(413)
+  })
+
+  it("ignore un fichier trop volumineux sans l'analyser", async () => {
+    const fd = new FormData()
+    fd.append("files", makeTxtFile("gros.txt", "x".repeat(MAX_IMPORT_FILE_BYTES + 1)))
+    const res = await POST(new Request("http://localhost", { method: "POST", body: fd }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.data[0].ok).toBe(false)
+    expect(json.data[0].error).toMatch(/volumineux/)
   })
 
   it("retourne 400 sans fichier", async () => {

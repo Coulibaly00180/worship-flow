@@ -16,12 +16,6 @@ type PlanItem = {
   song?: { id: string; title: string } | null
   content?: string | null
   notes?: string | null
-  // Champs conservés tels quels à la sauvegarde (ne pas les perdre)
-  refId?: string | null
-  refSubId?: string | null
-  mediaPath?: string | null
-  secondaryContent?: string | null
-  backgroundConfig?: string | null
 }
 
 const KIND_OPTIONS = [

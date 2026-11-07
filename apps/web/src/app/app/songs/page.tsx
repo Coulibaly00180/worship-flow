@@ -1,17 +1,17 @@
 import Link from "next/link"
-import { Plus, Search, Upload, Music2, Heart, Music, X } from "lucide-react"
+import { Plus, Search, Upload, Music2, Heart, Music, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { SongCard } from "@/components/songs/SongCard"
 import { canEditSongs, canImportSongs } from "@/lib/roles"
-import { buildSongQuery, sortByRank } from "@/lib/songSearch"
+import { SONG_PAGE_SIZE, buildSongQuery, findSongPage, parsePage } from "@/lib/songSearch"
 
 export const metadata = { title: "Chants" }
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")
 
-type Params = { q?: string; letter?: string; status?: string; fav?: string; scores?: string; tag?: string }
+type Params = { q?: string; letter?: string; status?: string; fav?: string; scores?: string; tag?: string; page?: string }
 type Props = { searchParams: Promise<Params> }
 
 const STATUS_CHIPS = [
@@ -22,7 +22,8 @@ const STATUS_CHIPS = [
 
 /** Construit un lien /app/songs en conservant les filtres actifs, avec des modifications. */
 function href(current: Params, patch: Partial<Params>) {
-  const next: Record<string, string | undefined> = { ...current, ...patch }
+  // Changer un filtre ramène à la première page (sauf si la page est explicitement demandée)
+  const next: Record<string, string | undefined> = { ...current, page: undefined, ...patch }
   const qs = new URLSearchParams()
   for (const [k, v] of Object.entries(next)) if (v) qs.set(k, v)
   const s = qs.toString()
@@ -41,16 +42,19 @@ export default async function SongsPage({ searchParams }: Props) {
   const { where, rank } = await buildSongQuery(session.user.id, {
     q, letter, status, tag, favorite: fav === "1", withScore: scores === "1",
   })
-  const found = await prisma.song.findMany({
-    where,
-    include: {
-      favorites: { where: { userId: session.user.id }, select: { userId: true } },
-      learnings: { where: { userId: session.user.id }, select: { status: true } },
-      _count: { select: { scores: true } },
-    },
-    orderBy: { title: "asc" },
-  })
-  const songs = sortByRank(found, rank)
+  const userId = session.user.id
+  const { items: songs, meta } = await findSongPage(where, rank, parsePage(params.page), SONG_PAGE_SIZE, (args) =>
+    prisma.song.findMany({
+      ...args,
+      include: {
+        favorites: { where: { userId }, select: { userId: true } },
+        learnings: { where: { userId }, select: { status: true } },
+        _count: { select: { scores: true } },
+      },
+      orderBy: { title: "asc" },
+    }),
+  )
+  const total = meta.total
   const filtered = !!(q || letter || status || fav || scores || tag)
 
   return (
@@ -60,8 +64,8 @@ export default async function SongsPage({ searchParams }: Props) {
           <h1 className="page-title">Chants</h1>
           <p className="page-subtitle" aria-live="polite">
             {filtered
-              ? `${songs.length} résultat${songs.length > 1 ? "s" : ""}`
-              : `${songs.length} chant${songs.length > 1 ? "s" : ""} dans la bibliothèque`}
+              ? `${total} résultat${total > 1 ? "s" : ""}`
+              : `${total} chant${total > 1 ? "s" : ""} dans la bibliothèque`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -171,6 +175,24 @@ export default async function SongsPage({ searchParams }: Props) {
             </li>
           ))}
         </ul>
+      )}
+
+      {meta.pageCount > 1 && (
+        <nav className="flex items-center justify-center gap-3 mt-6" aria-label="Pages">
+          {meta.page > 1 ? (
+            <Link href={href(params, { page: String(meta.page - 1) })} className="btn btn-secondary btn-sm" rel="prev">
+              <ChevronLeft size={16} aria-hidden="true" /> Précédent
+            </Link>
+          ) : <span />}
+          <span className="text-sm" style={{ color: "var(--color-on-surface-variant)" }} aria-current="page">
+            Page {meta.page} / {meta.pageCount}
+          </span>
+          {meta.page < meta.pageCount ? (
+            <Link href={href(params, { page: String(meta.page + 1) })} className="btn btn-secondary btn-sm" rel="next">
+              Suivant <ChevronRight size={16} aria-hidden="true" />
+            </Link>
+          ) : <span />}
+        </nav>
       )}
     </div>
   )

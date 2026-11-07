@@ -3,6 +3,9 @@ import { z } from "zod"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { canManagePlans } from "@/lib/roles"
+import { isUniqueViolation, jsonError } from "@/lib/http"
+
+const DUPLICATE_DATE = "Un plan existe déjà pour cette date"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -39,36 +42,32 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, error: "Plan introuvable" }, { status: 404 })
   }
 
-  // `date` est unique en base, y compris pour les plans supprimés (soft-delete)
+  // `date` est unique parmi les plans non supprimés (index unique partiel)
   const date = new Date(parsed.data.date)
-  const clash = await prisma.servicePlan.findUnique({ where: { date }, select: { id: true } })
-  if (clash) {
-    return NextResponse.json({ ok: false, error: "Un plan existe déjà pour cette date" }, { status: 409 })
-  }
+  const clash = await prisma.servicePlan.findFirst({ where: { date, deletedAt: null }, select: { id: true } })
+  if (clash) return jsonError(DUPLICATE_DATE, 409)
 
-  const plan = await prisma.servicePlan.create({
-    data: {
-      date,
-      title: parsed.data.title === undefined ? source.title : parsed.data.title,
-      backgroundConfig: source.backgroundConfig,
-      items: {
-        create: source.items.map((it, index) => ({
-          order: index,
-          kind: it.kind,
-          refId: it.refId,
-          refSubId: it.refSubId,
-          songId: it.songId,
-          title: it.title,
-          content: it.content,
-          notes: it.notes,
-          mediaPath: it.mediaPath,
-          secondaryContent: it.secondaryContent,
-          backgroundConfig: it.backgroundConfig,
-        })),
+  try {
+    const plan = await prisma.servicePlan.create({
+      data: {
+        date,
+        title: parsed.data.title === undefined ? source.title : parsed.data.title,
+        items: {
+          create: source.items.map((it, index) => ({
+            order: index,
+            kind: it.kind,
+            songId: it.songId,
+            title: it.title,
+            content: it.content,
+            notes: it.notes,
+          })),
+        },
       },
-    },
-    select: { id: true, date: true, title: true },
-  })
-
-  return NextResponse.json({ ok: true, data: plan }, { status: 201 })
+      select: { id: true, date: true, title: true },
+    })
+    return NextResponse.json({ ok: true, data: plan }, { status: 201 })
+  } catch (err) {
+    if (isUniqueViolation(err)) return jsonError(DUPLICATE_DATE, 409)
+    throw err
+  }
 }

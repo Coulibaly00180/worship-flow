@@ -4,7 +4,11 @@ Stratégie de test, configuration et patterns pour l'app Next.js.
 
 ---
 
-> **État actuel.** Vitest 4 ; 25 fichiers de tests, 319 tests (routes API chants/plans/utilisateurs/partitions, rôles, validations, parseur de chants, limiteur de connexion, contraste des accents, réglages d'apparence et leur synchronisation, compilateur de partitions YAML). Lancer : `npm run test` à la racine. Les tests mockent `@/lib/auth` et `@/lib/prisma` (pas de base requise).
+> **État actuel.** Vitest 4 ; 30 fichiers de tests, 373 tests (routes API chants/plans/utilisateurs/partitions, rôles, validations, parseur de chants, limiteur de connexion, IP client, mise à jour des blocs en place, stockage objet des partitions, cohérence de version du service worker, contraste des accents, réglages d'apparence et leur synchronisation, compilateur de partitions YAML). Lancer : `npm run test` à la racine. Les tests mockent `@/lib/auth` et `@/lib/prisma` (pas de base requise) ; le limiteur de connexion utilise son magasin mémoire sous Vitest.
+>
+> Cas de régression couverts : JSON invalide → 400 ; doublon de titre/date (y compris concurrence P2002) → 409 ; recréer le titre d'un chant supprimé ; notes préservées à la modification des blocs ; mot de passe actuel exigé et sessions invalidées ; dernier administrateur protégé ; import limité en nombre/taille et interdit au `LECTEUR` ; chant inconnu dans un plan, un favori ou un statut d'apprentissage → 400/404.
+>
+> **Pas encore de tests de bout en bout** (Playwright) dans la CI : ils demanderaient une base PostgreSQL dans le workflow. Piste suivante.
 
 ## Stack de test
 

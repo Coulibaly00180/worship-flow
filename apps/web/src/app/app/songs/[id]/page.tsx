@@ -27,16 +27,6 @@ const blockTypeLabel: Record<string, string> = {
   OTHER: "Autre",
 }
 
-function parseTags(tags: string | null): string[] {
-  if (!tags) return []
-  try {
-    const arr = JSON.parse(tags)
-    return Array.isArray(arr) ? arr.map(String) : []
-  } catch {
-    return []
-  }
-}
-
 export default async function SongDetailPage({ params }: Props) {
   const session = await auth()
   if (!session) redirect("/login")
@@ -61,7 +51,7 @@ export default async function SongDetailPage({ params }: Props) {
   const isFavorite = song.favorites.length > 0
   const learningStatus = song.learnings[0]?.status ?? null
   const canEdit = canEditSongs(session.user.role)
-  const tags = parseTags(song.tags)
+  const tags = song.tags
 
   // Numérotation des couplets : 1, 2, 3… (et non leur rang parmi tous les blocs)
   const labelled = song.blocks.map((b, i) => {

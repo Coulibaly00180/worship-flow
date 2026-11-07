@@ -4,6 +4,7 @@ const { mockAuth, mockPrisma } = vi.hoisted(() => ({
   mockAuth: vi.fn(),
   mockPrisma: {
     favorite: { upsert: vi.fn(), deleteMany: vi.fn() },
+    song: { findUnique: vi.fn() },
   },
 }))
 
@@ -23,6 +24,14 @@ describe("POST /api/songs/[id]/favorite", () => {
   beforeEach(() => {
     mockAuth.mockResolvedValue(makeSession())
     mockPrisma.favorite.upsert.mockResolvedValue({})
+    mockPrisma.song.findUnique.mockResolvedValue({ deletedAt: null })
+  })
+
+  it("404 (et non 500) pour un chant inconnu ou supprimé", async () => {
+    mockPrisma.song.findUnique.mockResolvedValue(null)
+    const res = await POST(new Request("http://localhost", { method: "POST" }), makeParams("nope"))
+    expect(res.status).toBe(404)
+    expect(mockPrisma.favorite.upsert).not.toHaveBeenCalled()
   })
 
   it("retourne 401 sans session", async () => {

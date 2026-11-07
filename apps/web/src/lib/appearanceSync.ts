@@ -37,12 +37,17 @@ export function decideSync(local: { updatedAt: number } | null, server: { update
 }
 
 /** Parse le JSON stocké en base ; null si absent, corrompu ou invalide. */
-export function parseStoredPrefs(raw: string | null | undefined): SyncPayload | null {
-  if (!raw) return null
-  try {
-    const parsed = SyncPayloadSchema.safeParse(JSON.parse(raw))
-    return parsed.success ? parsed.data : null
-  } catch {
-    return null
+/** Relit les réglages stockés (colonne JSONB ; une chaîne JSON est aussi acceptée). */
+export function parseStoredPrefs(raw: unknown): SyncPayload | null {
+  if (raw === null || raw === undefined || raw === "") return null
+  let value: unknown = raw
+  if (typeof raw === "string") {
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      return null
+    }
   }
+  const parsed = SyncPayloadSchema.safeParse(value)
+  return parsed.success ? parsed.data : null
 }

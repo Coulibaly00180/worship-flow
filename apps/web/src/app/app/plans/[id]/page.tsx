@@ -58,14 +58,6 @@ function formatDuration(min: number) {
   return s > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${m} min`
 }
 
-function parseTags(tags: string | null): string[] {
-  if (!tags) return []
-  try {
-    const arr = JSON.parse(tags)
-    return Array.isArray(arr) ? arr.map(String) : []
-  } catch { return [] }
-}
-
 export default async function PlanDetailPage({ params }: Props) {
   const session = await auth()
   if (!session) redirect("/login")
@@ -162,7 +154,7 @@ export default async function PlanDetailPage({ params }: Props) {
             {plan.items.map((item, i) => {
               const Icon = KIND_ICON[item.kind] ?? Music2
               const isSong = item.kind === "SONG_BLOCK" && !!item.song
-              const tags = parseTags(item.song?.tags ?? null)
+              const tags = item.song?.tags ?? []
               const title = item.title ?? item.song?.title ?? KIND_LABEL[item.kind] ?? "Élément"
 
               const body = (

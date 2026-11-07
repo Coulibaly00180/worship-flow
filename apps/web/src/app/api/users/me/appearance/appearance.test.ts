@@ -48,7 +48,7 @@ describe("/api/users/me/appearance", () => {
     const res = await put(valid(1000))
     expect(res.status).toBe(200)
     expect(mockPrisma.user.update.mock.calls[0][0].where).toEqual({ id: "u1" })
-    expect(JSON.parse(mockPrisma.user.update.mock.calls[0][0].data.uiPrefs).appearance.accent).toBe("vert")
+    expect(mockPrisma.user.update.mock.calls[0][0].data.uiPrefs.appearance.accent).toBe("vert")
   })
 
   it("PUT refuse JSON invalide (400) et valeurs hors liste (400)", async () => {
@@ -70,7 +70,7 @@ describe("/api/users/me/appearance", () => {
   it("PUT borne un horodatage dans le futur (horloge déréglée)", async () => {
     const future = Date.now() + 10 * 24 * 3600 * 1000
     await put(valid(future))
-    const stored = JSON.parse(mockPrisma.user.update.mock.calls[0][0].data.uiPrefs)
+    const stored = mockPrisma.user.update.mock.calls[0][0].data.uiPrefs
     expect(stored.updatedAt).toBeLessThanOrEqual(Date.now() + 5 * 60 * 1000 + 50)
   })
 })

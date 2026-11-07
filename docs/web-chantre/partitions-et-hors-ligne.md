@@ -5,11 +5,17 @@ Trois types, dans la table `SongScore` :
 
 | Type | Contenu | Stockage |
 |------|---------|----------|
-| `FILE` | PDF, PNG ou JPEG (8 Mo max). Le type est détecté sur les octets du fichier, pas sur l'extension. | colonne `data` (BYTEA) |
+| `FILE` | PDF, PNG ou JPEG (8 Mo max). Le type est détecté sur les octets du fichier, pas sur l'extension. | colonne `data` (BYTEA) **ou** stockage objet S3 (`storageKey`) si `S3_BUCKET` est configuré |
 | `YAML` | Partition **écrite en solfège** dans un YAML (50 000 caractères max), compilée en ABC | `source` (ce que l'utilisateur a saisi) + `abc` (résultat compilé) |
 | `ABC` | Partition saisie en **notation ABC** (100 000 caractères max), pour les utilisateurs avancés | colonne `abc` (texte) |
 
 Chaque partition a une **voix** (`ALL`, `SOPRANO`, `ALTO`, `TENOR`, `BASSE`, `ACCOMPAGNEMENT`) et une position.
+
+**Stockage des fichiers** (`src/lib/scoreStorage.ts`) : par défaut dans PostgreSQL ; avec `S3_BUCKET` (AWS S3, Cloudflare R2,
+MinIO…), le fichier va dans un bucket **privé** et la base ne garde que la clé. Les fichiers sont toujours servis par
+`GET /api/songs/[id]/scores/[scoreId]`, après contrôle de session (le bucket n'est jamais exposé). Supprimer une partition
+supprime l'objet ; un échec d'enregistrement en base supprime l'objet envoyé (pas d'orphelin). Les deux modes coexistent :
+`npm run scores:to-s3 -w @cp/web` déplace les anciennes partitions (voir `deploiement.md`).
 
 ## Écrire une partition en solfège (YAML)
 Le format recommandé : on écrit les notes avec leurs noms (`do ré mi fa sol la si`), le serveur les compile en ABC, qui est ensuite rendu,
@@ -133,7 +139,8 @@ Limites : pas de tablature de guitare ; l'audio ne rend pas les nuances (volume 
 `GET /api/songs?q=…` et la page Bibliothèque cherchent dans le titre, l'artiste, les étiquettes et les **paroles**, sans tenir compte des
 accents ni de la casse (extension PostgreSQL `unaccent`, créée par la migration `unaccent_search` ; le propriétaire de la base suffit).
 Tous les mots saisis doivent être présents (6 mots max) ; les chants dont le titre correspond passent en premier.
-Filtres : statut d'apprentissage, favoris, avec partition, étiquette.
+Filtres : statut d'apprentissage, favoris, avec partition, étiquette (`Song.tags` est un tableau PostgreSQL `TEXT[]`).
+La liste est **paginée** (60 chants par page dans l'interface, `page`/`pageSize` dans l'API).
 
 ## Mode lecture scène
 `/app/songs/[id]/read` : vue par blocs (flèches, espace) ou texte défilant (espace = lancer/arrêter, vitesse réglable), taille du texte,
@@ -147,6 +154,11 @@ Les réglages sont conservés dans le navigateur (`localStorage`, repli en mémo
   **Jamais en cache** : `/api/auth`, `/api/users`, `/login`, requêtes non-GET.
 - Bouton **Disponible hors-ligne** (fiche chant, plan) : enregistre les pages, les scripts nécessaires, les partitions fichier
   et le moteur ABC dans le cache `cp-offline`.
+- **Mise à jour du service worker** (`VERSION` dans `sw.js`, à garder identique à `STATIC_CACHE` dans `src/lib/offline.ts` —
+  un test le vérifie) : sons, icônes et page hors-ligne (URL stables) sont reportés dans le nouveau cache. Les scripts et styles
+  `/_next/static` (nom haché, propres à une version) ne sont reportés **que s'il existe des pages hors-ligne, et au plus 3 mises
+  à jour de suite** (en-tête interne `x-wf-carried`) : le cache ne grossit plus indéfiniment. Juste après, les pages hors-ligne
+  sont **rafraîchies** si le réseau le permet (nouvelle version + ses scripts) ; sinon l'ancienne version est conservée.
 - Les caches contiennent des données de la personne connectée : ils sont **vidés à la déconnexion** (`clearOfflineCaches`).
 - Prérequis : **HTTPS** (ou `localhost`). Sans HTTPS le navigateur refuse le service worker et l'application reste en ligne seulement.
 - Limite connue : la navigation interne hors-ligne repasse par un rechargement complet de page (pas de transitions instantanées), et seules
